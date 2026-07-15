@@ -5,7 +5,7 @@
         <Icon icon="mdi:email-outline" width="24" height="24" />
         <div>{{settingStore.settings.title}}</div>
       </div>
-      <el-menu :collapse="false" text-color="#fff" active-text-color="#fff" style="margin-top: 10px">
+      <el-menu :collapse="false" style="margin-top: 10px">
         <el-menu-item @click="router.push({name: 'email'})" index="email"
                       :class="route.meta.name === 'email' ? 'choose-item' : ''">
           <Icon icon="hugeicons:mailbox-01" width="20" height="20" />
@@ -124,7 +124,9 @@ const route = useRoute();
 .manage-title {
   margin-top: 10px;
   padding-left: 20px;
-  color: #fff;
+  color: var(--aside-muted-text-color);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .el-menu-item {
@@ -134,15 +136,18 @@ const route = useRoute();
   padding: 10px !important;
 }
 
-.choose-item {
+:deep(.el-menu-item.choose-item) {
   font-weight: bold;
-  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--aside-active-color) !important;
+  background: var(--aside-active-background) !important;
   backdrop-filter: blur(4px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 @media (hover: hover) {
   .el-menu-item:hover {
-    background: rgba(255, 255, 255, 0.08) !important;
+    color: var(--aside-text-color) !important;
+    background: var(--aside-item-hover) !important;
   }
 }
 
@@ -152,15 +157,17 @@ const route = useRoute();
 
 
 :deep(.el-scrollbar__wrap--hidden-default ) {
-  background: var(--aside-backgound) !important;
+  background: transparent !important;
 }
 
 :deep(.el-menu-item) {
-  background: var(--aside-backgound);
+  color: var(--aside-text-color) !important;
+  background: transparent;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 :deep(.el-menu) {
-  background: var(--aside-backgound);
+  background: transparent;
 }
 
 .el-menu {
@@ -169,11 +176,15 @@ const route = useRoute();
 }
 
 :deep(.el-divider__text) {
-  background: var(--aside-backgound);
-  color: #FFFFFF;
+  background: transparent;
+  color: var(--aside-text-color);
 }
 
 .scroll {
-
+  height: 100%;
+  background: var(--aside-backgound);
+  border-right: 1px solid var(--aside-border-color);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
 }
 </style>

@@ -71,7 +71,7 @@ onBeforeUnmount(() => {
     left: 0;
     z-index: 101;
     height: 100%;
-    background: var(--el-bg-color);
+    background: transparent;
   }
 }
 
