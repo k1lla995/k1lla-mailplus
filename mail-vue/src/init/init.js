@@ -6,6 +6,7 @@ import {permsToRouter} from "@/perm/perm.js";
 import router from "@/router";
 import {websiteConfig} from "@/request/setting.js";
 import i18n from "@/i18n/index.js";
+import {applyPrimaryColor} from "@/utils/theme.js";
 
 export async function init() {
     document.title = '\u200B'
@@ -35,6 +36,7 @@ export async function init() {
         setting = s;
         settingStore.settings = setting;
         settingStore.domainList = setting.domainList;
+        applyPrimaryColor(setting.primaryColor);
         document.title = setting.title;
 
         if (user) {
@@ -52,6 +54,7 @@ export async function init() {
         setting = await websiteConfig();
         settingStore.settings = setting;
         settingStore.domainList = setting.domainList;
+        applyPrimaryColor(setting.primaryColor);
         document.title = setting.title;
     }
 }

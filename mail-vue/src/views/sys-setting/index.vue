@@ -94,6 +94,22 @@
                                    :step="0.01" :max="1" :min="0"/>
                 </div>
               </div>
+              <div class="setting-item color-setting">
+                <div>
+                  <span>{{ $t('primaryColor') }}</span>
+                  <small>{{ $t('primaryColorDesc') }}</small>
+                </div>
+                <div class="color-picker-control">
+                  <span class="color-value" :style="{backgroundColor: primaryColor}"></span>
+                  <span class="color-code">{{ primaryColor }}</span>
+                  <el-color-picker
+                      v-model="primaryColor"
+                      :show-alpha="false"
+                      @active-change="previewPrimaryColor"
+                      @change="savePrimaryColor"
+                  />
+                </div>
+              </div>
               <div class="setting-item personalized">
                 <div><span>{{ $t('loginBackground') }}</span></div>
                 <div>
@@ -820,6 +836,7 @@ import {getTextWidth} from "@/utils/text.js";
 import {fileToBase64} from "@/utils/file-utils.js"
 import {useI18n} from 'vue-i18n';
 import axios from "axios";
+import {applyPrimaryColor, DEFAULT_PRIMARY_COLOR} from "@/utils/theme.js";
 
 defineOptions({
   name: 'sys-setting'
@@ -855,6 +872,7 @@ const settingLoading = ref(false)
 const clearS3Loading = ref(false)
 const r2DomainInput = ref('')
 const loginOpacity = ref(0)
+const primaryColor = ref(DEFAULT_PRIMARY_COLOR)
 const minEmailPrefix = ref(0)
 const emailPrefixFilter = ref([])
 const backgroundUrl = ref('')
@@ -946,6 +964,7 @@ function getSettings() {
     settingStore.domainList = settingData.domainList;
     resendTokenForm.domain = setting.value.domainList[0]
     loginOpacity.value = setting.value.loginOpacity
+    primaryColor.value = applyPrimaryColor(setting.value.primaryColor)
     minEmailPrefix.value = setting.value.minEmailPrefix
     firstLoading.value = false
     backgroundUrl.value = setting.value.background?.startsWith('http') ? setting.value.background : ''
@@ -1229,6 +1248,17 @@ function doOpacityChange() {
   const form = {}
   form.loginOpacity = loginOpacity.value
   editSetting(form, true)
+}
+
+function previewPrimaryColor(color) {
+  if (color) applyPrimaryColor(color)
+}
+
+function savePrimaryColor(color) {
+  const value = applyPrimaryColor(color)
+  primaryColor.value = value
+  setting.value.primaryColor = value
+  editSetting({primaryColor: value}, false)
 }
 
 function resetEmailPrefix() {
@@ -1901,6 +1931,39 @@ function editSetting(settingForm, refreshStatus = true) {
       margin-top: 0;
     }
   }
+}
+
+.color-setting {
+  align-items: center;
+
+  small {
+    display: block;
+    color: var(--secondary-text-color);
+    font-size: 12px;
+    margin-top: 2px;
+  }
+}
+
+.color-picker-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.color-value {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--el-bg-color);
+  box-shadow: 0 0 0 1px var(--light-border);
+}
+
+.color-code {
+  color: var(--secondary-text-color);
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-transform: uppercase;
 }
 
 .dialog-input {

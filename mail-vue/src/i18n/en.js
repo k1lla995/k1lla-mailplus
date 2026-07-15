@@ -142,6 +142,8 @@ const en = {
     customization: 'Customization',
     websiteTitle: 'Title',
     loginBoxOpacity: 'Login Box Opacity',
+    primaryColor: 'Theme Color',
+    primaryColorDesc: 'Drag to choose the interface color',
     loginBackground: 'Background',
     emailSetting: 'Email',
     receiveEmail: 'Receive Email',
