@@ -5,7 +5,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
+import { sanitizeEmailHtml } from '@/utils/sanitize-html.js'
 
 const props = defineProps({
   html: {
@@ -19,17 +20,10 @@ const contentBox = ref(null)
 let shadowRoot = null
 
 function updateContent() {
-  if (!shadowRoot) return;
+  if (!shadowRoot) return
 
-  // 1. 提取 <body> 的 style 属性（如果存在）
-  const bodyStyleRegex = /<body[^>]*style="([^"]*)"[^>]*>/i;
-  const bodyStyleMatch = props.html.match(bodyStyleRegex);
-  const bodyStyle = bodyStyleMatch ? bodyStyleMatch[1] : '';
+  const cleanedHtml = sanitizeEmailHtml(props.html)
 
-  // 2. 移除 <body> 标签（保留内容）
-  const cleanedHtml = props.html.replace(/<\/?body[^>]*>/gi, '');
-
-  // 3. 将 body 的 style 应用到 .shadow-content
   shadowRoot.innerHTML = `
     <style>
       :host {
@@ -45,8 +39,8 @@ function updateContent() {
       }
 
       h1, h2, h3, h4 {
-          font-size: 18px;
-          font-weight: 700;
+        font-size: 18px;
+        font-weight: 700;
       }
 
       p {
@@ -63,19 +57,17 @@ function updateContent() {
         width: fit-content;
         height: fit-content;
         min-width: 100%;
-        ${bodyStyle ? bodyStyle : ''} /* 注入 body 的 style */
       }
 
       img:not(table img) {
         max-width: 100%;
         height: auto !important;
       }
-
     </style>
-    <div class="shadow-content">
-      ${cleanedHtml}
-    </div>
-  `;
+    <div class="shadow-content"></div>
+  `
+
+  shadowRoot.querySelector('.shadow-content').innerHTML = cleanedHtml
 }
 
 function autoScale() {
@@ -91,10 +83,7 @@ function autoScale() {
 
   if (childWidth === 0) return
 
-  const scale = parentWidth / childWidth
-
-  const hostElement = shadowRoot.host
-  hostElement.style.zoom = scale
+  shadowRoot.host.style.zoom = parentWidth / childWidth
 }
 
 onMounted(() => {
@@ -105,7 +94,7 @@ onMounted(() => {
 
 watch(() => props.html, () => {
   updateContent()
-  autoScale()
+  nextTick(autoScale)
 })
 </script>
 
