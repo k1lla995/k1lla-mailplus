@@ -64,6 +64,8 @@ const en = {
 	noDomainPermSend: "No permission to send from this domain email",
 	publicTokenFail: 'Token validation failed',
 	notAdmin: 'The entered email is not an administrator email',
+	adminEmailReserved: 'The administrator email cannot be created through public registration',
+	adminNotConfigured: 'The administrator email is not configured correctly',
 	emailExistDatabase: 'Email already exists in the database',
 	notConfigOss: 'Object storage not configured',
 	perms: {

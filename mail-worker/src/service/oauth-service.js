@@ -20,7 +20,7 @@ const oauthService = {
 			throw new BizError('用户已绑定有邮箱')
 		}
 
-		await loginService.register(c, { email, password: cryptoUtils.genRandomPwd(), code }, true);
+		await loginService.register(c, { email, password: cryptoUtils.genRandomPwd(), code }, { oauth: true });
 
 		userRow = await userService.selectByEmail(c, email);
 

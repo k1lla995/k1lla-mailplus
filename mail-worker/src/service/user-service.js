@@ -18,6 +18,7 @@ import { t } from '../i18n/i18n'
 import reqUtils from '../utils/req-utils';
 import {oauth} from "../entity/oauth";
 import oauthService from "./oauth-service";
+import adminUtils from '../utils/admin-utils';
 
 const userService = {
 
@@ -32,7 +33,7 @@ const userService = {
 		const [account, roleRow, permKeys] = await Promise.all([
 			accountService.selectByEmailIncludeDel(c, userRow.email),
 			roleService.selectById(c, userRow.type),
-			userRow.email === c.env.admin ? Promise.resolve(['*']) : permService.userPermKeys(c, userId)
+			adminUtils.isAdminUser(userRow, c.env.admin) ? Promise.resolve(['*']) : permService.userPermKeys(c, userId)
 		]);
 
 		const user = {};
@@ -45,7 +46,7 @@ const userService = {
 		user.role = roleRow;
 		user.type = userRow.type;
 
-		if (c.env.admin === userRow.email) {
+		if (adminUtils.isAdminUser(userRow, c.env.admin)) {
 			user.role = constant.ADMIN_ROLE
 			user.type = 0;
 		}
@@ -63,6 +64,24 @@ const userService = {
 		}
 		const { salt, hash } = await cryptoUtils.hashPassword(password);
 		await orm(c).update(user).set({ password: hash, salt: salt }).where(eq(user.userId, userId)).run();
+	},
+
+	async recoverAdmin(c, userId, password) {
+		const { salt, hash } = await cryptoUtils.hashPassword(password);
+		await orm(c).update(user).set({
+			password: hash,
+			salt,
+			type: 0,
+			status: userConst.status.NORMAL,
+			isDel: isDel.NORMAL
+		}).where(eq(user.userId, userId)).run();
+		await accountService.restoreByUserId(c, userId);
+		await c.env.kv.delete(KvConst.AUTH_INFO + userId);
+	},
+
+	async markAdmin(c, userId) {
+		await orm(c).update(user).set({ type: 0 }).where(eq(user.userId, userId)).run();
+		await c.env.kv.delete(KvConst.AUTH_INFO + userId);
 	},
 
 	selectByEmail(c, email) {
@@ -206,7 +225,7 @@ const userService = {
 				sendAction.hasPerm = false;
 			}
 
-			if (user.email === c.env.admin) {
+			if (adminUtils.isAdminUser(user, c.env.admin)) {
 				sendAction.sendType = constant.ADMIN_ROLE.sendType;
 				sendAction.sendCount = constant.ADMIN_ROLE.sendCount;
 				sendAction.hasPerm = true;

@@ -129,6 +129,16 @@ cd mail-worker
 pnpm deploy
 ```
 
+After the first deployment, visit the existing initialization URL to initialize the database and create the administrator account. The administrator email is read from the `admin` environment variable and can no longer be created through public sign-up:
+
+```bash
+https://your-project-domain/api/init/your-jwt-secret
+```
+
+The response shows a generated administrator temporary password once; save it immediately, sign in, and change it in Personal Settings. After upgrading from an older version, visit the URL once to write the trusted administrator marker and reset the account password. Do not publicly share or retain the initialization URL because it contains `jwt_secret`.
+
+For an automated deployment, do not configure an automatic initialization URL for the first deployment; open the URL manually to view the temporary password.
+
 Before deployment, make sure the D1, KV, and R2 bindings and environment variables in the Wrangler configuration are set up. For production, deployment through GitHub Actions or another CI workflow is recommended.
 
 ## Screenshots

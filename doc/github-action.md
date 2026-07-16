@@ -17,7 +17,7 @@
 | `DOMAIN`                |  ✅  | 您要用于邮件服务的域名（例如 `["xx.xx"]，多域名用,分隔`）        |
 | `ADMIN`                 |  ✅  | 您的管理员邮箱地址（例如 `admin@example.com`）      |
 | `JWT_SECRET`            |  ✅  | 用于生成和验证 JWT 的随机长字符串                     |
-| `INIT_URL`              |  ❌  | （可选）部署后用于初始化数据库的 Worker URL（格式参考下述手动初始化）           |
+| `INIT_URL`              |  ❌  | （可选）部署后用于初始化数据库的 Worker URL；首次部署建议留空，以便手动查看管理员临时密码 |
 
 ---
 
@@ -34,5 +34,9 @@
 2. 复制到 GitHub Secrets 中的 `CLOUDFLARE_ACCOUNT_ID`
 
 **运行工作流**
-1. 然后在Action页面手动运行工作流，后续同步上游后会自动部署到 Cloudflare Workers。如未配置 `INIT_URL`，则需要手动访问 `https://你的项目域名/api/init/你的jwt_secret` 进行数据库初始化。
-2. 自动同步上游可使用bot或者手动点击Sync Upstream按钮。
+1. 在 Action 页面手动运行工作流，后续同步上游后会自动部署到 Cloudflare Workers。
+2. 首次部署后，访问 `https://你的项目域名/api/init/你的jwt_secret`。该请求会初始化数据库并安全创建 `ADMIN` 对应的管理员账号，响应中会显示一次随机生成的管理员临时密码；请立即保存、登录后在个人设置中修改密码。
+
+管理员邮箱已从公开注册通道保留，不能在注册页面直接创建。旧版本升级后也应执行一次上述地址，为现有账号写入可信管理员标记并重置密码。请勿公开或长期保留该地址，因为其中包含 `JWT_SECRET`。
+
+3. 自动同步上游可使用 bot 或者手动点击 Sync Upstream 按钮。

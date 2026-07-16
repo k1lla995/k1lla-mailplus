@@ -19,16 +19,21 @@ import dayjs from 'dayjs';
 import { toUtc } from '../utils/date-uitil';
 import { t } from '../i18n/i18n.js';
 import verifyRecordService from './verify-record-service';
+import adminUtils from '../utils/admin-utils';
 
 const loginService = {
 
-	async register(c, params, oauth = false) {
+	async register(c, params, options = {}) {
 
 		const { email, password, token, code } = params;
+		const { oauth = false, adminBootstrap = false } = options;
 
 		let { regKey, register, registerVerify, regVerifyCount, minEmailPrefix, emailPrefixFilter } = await settingService.query(c)
+		emailPrefixFilter = Array.isArray(emailPrefixFilter)
+			? emailPrefixFilter
+			: String(emailPrefixFilter || '').split(',').filter(Boolean);
 
-		if (oauth) {
+		if (oauth || adminBootstrap) {
 			registerVerify = settingConst.registerVerify.CLOSE;
 			register = settingConst.register.OPEN;
 		}
@@ -39,6 +44,10 @@ const loginService = {
 
 		if (!verifyUtils.isEmail(email)) {
 			throw new BizError(t('notEmail'));
+		}
+
+		if (adminUtils.isAdminEmail(email, c.env.admin) && !adminBootstrap) {
+			throw new BizError(t('adminEmailReserved'), 403);
 		}
 
 		if (emailUtils.getName(email).length < minEmailPrefix) {
@@ -68,13 +77,13 @@ const loginService = {
 		let type = null;
 		let regKeyId = 0
 
-		if (regKey === settingConst.regKey.OPEN) {
+		if (!adminBootstrap && regKey === settingConst.regKey.OPEN) {
 			const result = await this.handleOpenRegKey(c, regKey, code)
 			type = result?.type
 			regKeyId = result?.regKeyId
 		}
 
-		if (regKey === settingConst.regKey.OPTIONAL) {
+		if (!adminBootstrap && regKey === settingConst.regKey.OPTIONAL) {
 			const result = await this.handleOpenOptional(c, regKey, code)
 			type = result?.type
 			regKeyId = result?.regKeyId
@@ -114,12 +123,12 @@ const loginService = {
 
 		let regVerifyOpen = false
 
-		if (registerVerify === settingConst.registerVerify.OPEN) {
+		if (!adminBootstrap && registerVerify === settingConst.registerVerify.OPEN) {
 			regVerifyOpen = true
 			await turnstileService.verify(c,token)
 		}
 
-		if (registerVerify === settingConst.registerVerify.COUNT) {
+		if (!adminBootstrap && registerVerify === settingConst.registerVerify.COUNT) {
 			regVerifyOpen = await verifyRecordService.isOpenRegVerify(c, regVerifyCount);
 			if (regVerifyOpen) {
 				await turnstileService.verify(c,token)
@@ -134,17 +143,43 @@ const loginService = {
 
 		await userService.updateUserInfo(c, userId, true);
 
-		if (regKey !== settingConst.regKey.CLOSE && type) {
+		if (!adminBootstrap && regKey !== settingConst.regKey.CLOSE && type) {
 			await regKeyService.reduceCount(c, code, 1);
 		}
 
-		if (registerVerify === settingConst.registerVerify.COUNT && !regVerifyOpen) {
+		if (!adminBootstrap && registerVerify === settingConst.registerVerify.COUNT && !regVerifyOpen) {
 			const row = await verifyRecordService.increaseRegCount(c);
 			return {regVerifyOpen: row.count >= regVerifyCount}
 		}
 
 		return {regVerifyOpen}
 
+	},
+
+	async bootstrapAdmin(c) {
+		const email = adminUtils.normalizeEmail(c.env.admin);
+
+		if (!verifyUtils.isEmail(email)) {
+			throw new BizError(t('adminNotConfigured'));
+		}
+
+		const userRow = await userService.selectByEmailIncludeDel(c, email);
+
+		if (adminUtils.isAdminUser(userRow, c.env.admin)) {
+			return { created: false, temporaryPassword: null };
+		}
+
+		const password = cryptoUtils.genRandomPwd(24);
+
+		if (userRow) {
+			await userService.recoverAdmin(c, userRow.userId, password);
+		} else {
+			await this.register(c, { email, password }, { adminBootstrap: true });
+			const createdUser = await userService.selectByEmailIncludeDel(c, email);
+			await userService.markAdmin(c, createdUser.userId);
+		}
+
+		return { created: true, temporaryPassword: password };
 	},
 
 	async registerVerify() {

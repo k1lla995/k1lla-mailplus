@@ -29,9 +29,11 @@ const saltHashUtils = {
 
 	genRandomPwd(length = 8) {
 		const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+		const randomValues = new Uint8Array(length);
+		crypto.getRandomValues(randomValues);
 		let result = '';
-		for (let i = 0; i < length; i++) {
-			result += chars.charAt(Math.floor(Math.random() * chars.length));
+		for (const value of randomValues) {
+			result += chars.charAt(value % chars.length);
 		}
 		return result;
 	}

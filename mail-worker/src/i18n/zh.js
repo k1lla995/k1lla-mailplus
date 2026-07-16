@@ -64,6 +64,8 @@ const zh = {
 	noDomainPermSend: '你没有权限使用该域名邮箱发送邮件',
 	publicTokenFail: 'token验证失败',
 	notAdmin: '输入的邮箱不是管理员邮箱',
+	adminEmailReserved: '管理员邮箱不能通过公开注册创建',
+	adminNotConfigured: '管理员邮箱未正确配置',
 	emailExistDatabase: '有邮箱已存在数据库中',
 	notConfigOss: '对象存储未配置',
 	perms: {
