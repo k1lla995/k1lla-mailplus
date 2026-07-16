@@ -1,4 +1,5 @@
 export const DEFAULT_PRIMARY_COLOR = '#1890ff'
+const PRIMARY_COLOR_STORAGE_KEY = 'mailplus.primary-color'
 
 function hexToRgb(hex) {
     const normalized = hex.replace('#', '')
@@ -39,6 +40,13 @@ export function applyPrimaryColor(color) {
     root.style.setProperty('--el-color-primary-light-7', mixColor(rgb, 255, 0.7))
     root.style.setProperty('--el-color-primary-light-8', mixColor(rgb, 255, 0.8))
     root.style.setProperty('--el-color-primary-light-9', mixColor(rgb, 255, 0.9))
+    root.style.setProperty('--loading-primary', value)
+
+    try {
+        localStorage.setItem(PRIMARY_COLOR_STORAGE_KEY, value)
+    } catch {
+        // The active session still receives the theme color when storage is unavailable.
+    }
 
     const themeColor = document.querySelector('meta[name="theme-color"]')
     themeColor?.setAttribute('content', value)

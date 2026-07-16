@@ -179,7 +179,8 @@ function removeLoading() {
         return;
     }
 
-    doc.remove()
+    doc.classList.add('loading-complete', 'loading-hide')
+    window.setTimeout(() => doc.remove(), 220)
 }
 
 export default router

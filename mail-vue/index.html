@@ -10,10 +10,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
   <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <script>
+    const root = document.documentElement
+    const cachedPrimaryColor = localStorage.getItem('mailplus.primary-color')
+    if (/^#[0-9a-f]{6}$/i.test(cachedPrimaryColor || '')) {
+      root.style.setProperty('--loading-primary', cachedPrimaryColor)
+    }
+
     const uiStoreStr =  localStorage.getItem('ui')
     if (uiStoreStr) {
       const uiStore =  JSON.parse(uiStoreStr)
-      const root = document.documentElement
       root.setAttribute('class', uiStore.dark ? 'dark' : '');
       const metaTag = document.getElementById('theme-color-meta');
       const isMobile =  !window.matchMedia("(pointer: fine) and (hover: hover)").matches;
@@ -28,6 +33,9 @@
   .dark {
     background: #141414;
   }
+  :root {
+    --loading-primary: #1890ff;
+  }
   #loading-first {
     position: fixed;
     left: 0;
@@ -38,35 +46,42 @@
     justify-content: center;
     align-items: center;
     z-index: 500;
-    background: var(--el-bg-color);
+    background: var(--el-bg-color, #FFFFFF);
+    transition: opacity 220ms ease, transform 220ms ease;
+  }
+
+  .dark #loading-first {
+    background: #141414;
   }
 
   .loading-hide {
     pointer-events: none;
     opacity: 0;
+    transform: scale(0.985);
   }
 
   .loading-icon {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
+    position: relative;
+    width: clamp(190px, 38vw, 266px);
+    height: 98px;
   }
 
-  .loading-image {
-    width: 70px;
-    height: 70px;
-    object-fit: contain;
+  .loading-track {
+    position: absolute;
+    right: 0;
+    bottom: 15px;
+    left: 0;
+    height: 7px;
   }
 
   .loading-progress {
     position: relative;
-    width: 64px;
-    height: 4px;
-    overflow: hidden;
+    width: 100%;
+    height: 5px;
+    overflow: visible;
     border-radius: 999px;
-    background: rgba(64, 158, 255, 0.18);
+    background: rgba(24, 144, 255, 0.14);
+    background: color-mix(in srgb, var(--loading-primary) 16%, transparent);
   }
 
   .loading-progress::before {
@@ -77,23 +92,24 @@
     width: 100%;
     height: 100%;
     border-radius: inherit;
-    background: #409EFF;
+    background: var(--loading-primary);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--loading-primary) 40%, transparent);
     transform: scaleX(0);
     transform-origin: left center;
-    animation: loading-progress-grow 2.4s linear forwards;
+    animation: loading-progress-grow 2.4s cubic-bezier(0.2, 0.72, 0.32, 1) forwards;
   }
 
   .loading-progress::after {
     content: "";
     position: absolute;
     top: 0;
-    width: 24px;
+    left: -28px;
+    width: 28px;
     height: 100%;
     border-radius: inherit;
-    background: rgba(64, 158, 255, 0.45);
-    filter: blur(4px);
-    transform: translateX(-24px);
-    animation: loading-progress-peg 2.4s linear forwards;
+    background: color-mix(in srgb, white 78%, var(--loading-primary));
+    filter: blur(3px);
+    animation: loading-progress-peg 2.4s cubic-bezier(0.2, 0.72, 0.32, 1) forwards;
   }
 
   .loading-complete .loading-progress::before {
@@ -104,8 +120,146 @@
 
   .loading-complete .loading-progress::after {
     animation: none;
-    transform: translateX(60px);
-    transition: transform 200ms linear;
+    left: calc(100% - 12px);
+    transition: left 200ms linear;
+  }
+
+  .loading-pet {
+    --pet-outline: color-mix(in srgb, var(--loading-primary) 62%, #0f2747);
+    position: absolute;
+    z-index: 2;
+    bottom: 11px;
+    left: -7px;
+    width: 48px;
+    height: 58px;
+    filter: drop-shadow(2px 3px 0 rgba(15, 39, 71, 0.16));
+    image-rendering: pixelated;
+    transform-origin: center bottom;
+    animation: loading-pet-travel 2.4s cubic-bezier(0.2, 0.72, 0.32, 1) forwards;
+  }
+
+  .pet-head {
+    position: absolute;
+    top: 0;
+    left: 5px;
+    width: 38px;
+    height: 34px;
+    background: var(--loading-primary);
+    clip-path: polygon(21% 0, 42% 0, 50% 7%, 58% 0, 79% 0, 79% 8%, 91% 8%, 91% 21%, 100% 21%, 100% 70%, 91% 70%, 91% 84%, 76% 84%, 76% 93%, 24% 93%, 24% 84%, 9% 84%, 9% 70%, 0 70%, 0 21%, 9% 21%, 9% 8%, 21% 8%);
+    box-shadow: inset 4px 4px 0 color-mix(in srgb, white 28%, var(--loading-primary));
+    animation: pet-head-bob 300ms steps(2, end) infinite var(--pet-stagger, 0s);
+  }
+
+  .pet-face {
+    position: absolute;
+    top: 11px;
+    left: 8px;
+    width: 22px;
+    height: 14px;
+    background: #102641;
+    border: 2px solid var(--pet-outline);
+    border-radius: 3px;
+    transform: rotate(var(--face-tilt, 0deg));
+  }
+
+  .pet-face::before {
+    content: '';
+    position: absolute;
+    top: 4px;
+    left: 5px;
+    width: 3px;
+    height: 3px;
+    background: #d6f3ff;
+    box-shadow: 8px 0 #d6f3ff;
+    animation: pet-eyes 1.08s steps(1, end) infinite var(--pet-stagger, 0s);
+  }
+
+  .pet-face::after {
+    content: '';
+    position: absolute;
+    right: 5px;
+    bottom: 3px;
+    width: 6px;
+    height: 2px;
+    background: #8ddaff;
+    animation: pet-mouth 860ms steps(1, end) infinite var(--pet-stagger, 0s);
+  }
+
+  .pet-body {
+    position: absolute;
+    top: 29px;
+    left: 12px;
+    width: 24px;
+    height: 20px;
+    background: color-mix(in srgb, var(--loading-primary) 84%, #0f2747);
+    clip-path: polygon(16% 0, 84% 0, 100% 26%, 100% 82%, 78% 82%, 78% 100%, 56% 100%, 56% 83%, 44% 83%, 44% 100%, 22% 100%, 22% 82%, 0 82%, 0 26%);
+    animation: pet-body-run 300ms steps(2, end) infinite var(--pet-stagger, 0s);
+  }
+
+  .pet-body::before,
+  .pet-body::after {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    width: 8px;
+    height: 6px;
+    background: color-mix(in srgb, var(--loading-primary) 67%, #0f2747);
+  }
+
+  .pet-body::before {
+    left: -6px;
+    transform: rotate(28deg);
+  }
+
+  .pet-body::after {
+    right: -6px;
+    transform: rotate(-28deg);
+  }
+
+  .pet-envelope {
+    position: absolute;
+    z-index: 3;
+    top: 35px;
+    right: -7px;
+    width: 18px;
+    height: 13px;
+    background: #1677ff;
+    border: 2px solid #0c4ba5;
+    box-shadow: 2px 2px 0 rgba(12, 75, 165, 0.26);
+    animation: pet-envelope-swing 300ms steps(2, end) infinite var(--pet-stagger, 0s);
+  }
+
+  .pet-envelope::before {
+    content: '';
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    width: 12px;
+    height: 8px;
+    border-top: 2px solid #9ed1ff;
+    border-right: 2px solid #9ed1ff;
+    transform: rotate(45deg);
+    transform-origin: center;
+  }
+
+  .loading-pet[data-mood="wink"] {
+    --face-tilt: -3deg;
+  }
+
+  .loading-pet[data-mood="wink"] .pet-face::before {
+    width: 5px;
+    height: 2px;
+    box-shadow: 7px 1px #d6f3ff;
+  }
+
+  .loading-pet[data-mood="joy"] {
+    --face-tilt: 3deg;
+  }
+
+  .loading-pet[data-mood="joy"] .pet-face::after {
+    width: 8px;
+    height: 3px;
+    border-radius: 0 0 5px 5px;
   }
 
   @keyframes loading-progress-grow {
@@ -119,20 +273,78 @@
 
   @keyframes loading-progress-peg {
     0% {
-      transform: translateX(-24px);
+      left: -28px;
     }
     100% {
-      transform: translateX(60px);
+      left: calc(100% - 8px);
+    }
+  }
+
+  @keyframes loading-pet-travel {
+    0% { left: -7px; }
+    100% { left: calc(100% - 40px); }
+  }
+
+  @keyframes pet-head-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+
+  @keyframes pet-body-run {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(1px, 3px); }
+  }
+
+  @keyframes pet-envelope-swing {
+    0%, 100% { transform: translateY(0) rotate(-6deg); }
+    50% { transform: translateY(-3px) rotate(6deg); }
+  }
+
+  @keyframes pet-eyes {
+    0%, 68%, 100% { transform: scaleY(1); }
+    74% { transform: scaleY(0.2); }
+  }
+
+  @keyframes pet-mouth {
+    0%, 49%, 100% { transform: scaleX(1); }
+    50%, 72% { transform: scaleX(0.55) translateX(2px); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .loading-progress::before,
+    .loading-progress::after,
+    .loading-pet,
+    .pet-head,
+    .pet-body,
+    .pet-envelope,
+    .pet-face::before,
+    .pet-face::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
     }
   }
 </style>
 <body>
 <div id="loading-first" >
   <div class="loading-icon">
-    <img class="loading-image" src="/mail-pwa.png" alt="Cloud Mail">
-    <div class="loading-progress" aria-hidden="true"></div>
+    <div class="loading-track">
+      <div id="loading-pet" class="loading-pet" aria-hidden="true">
+        <div class="pet-head"><span class="pet-face"></span></div>
+        <div class="pet-body"></div>
+        <div class="pet-envelope"></div>
+      </div>
+      <div class="loading-progress" aria-hidden="true"></div>
+    </div>
   </div>
 </div>
+<script>
+  const loadingPet = document.getElementById('loading-pet')
+  if (loadingPet) {
+    const moods = ['calm', 'wink', 'joy']
+    loadingPet.dataset.mood = moods[Math.floor(Math.random() * moods.length)]
+    loadingPet.style.setProperty('--pet-stagger', `-${(Math.random() * 0.8).toFixed(2)}s`)
+  }
+</script>
 <div id="app"></div>
 <script type="module" src="/src/main.js"></script>
 </body>
