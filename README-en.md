@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="doc/demo/logo.png" width="80" alt="Cloud Mail logo" />
+  <img src="mail-vue/public/codex-pet-favicon.png" width="96" alt="k1lla-mailplus mascot" />
 </p>
 
-<h1 align="center">Cloud Mail</h1>
+<h1 align="center">k1lla-mailplus</h1>
 
 <p align="center">
   A serverless email service built on Cloudflare for managing multiple accounts, sending and receiving emails, and storing attachments.
@@ -20,7 +20,7 @@
 
 ## Overview
 
-Cloud Mail is a lightweight, responsive email management system. With a single domain, you can create and manage multiple email accounts while deploying the backend on Cloudflare's edge infrastructure to reduce traditional server and maintenance costs.
+k1lla-mailplus is a lightweight, responsive email management system. With a single domain, you can create and manage multiple email accounts while deploying the backend on Cloudflare's edge infrastructure to reduce traditional server and maintenance costs.
 
 This project is also a practical example of a full-stack serverless application, covering frontend and backend separation, access control, email processing, object storage, and data visualization.
 
@@ -65,7 +65,7 @@ This project is also a practical example of a full-stack serverless application,
 ## Project Structure
 
 ```text
-cloud-mail/
+k1lla-mailplus/
 ├── mail-vue/                 # Vue 3 frontend application
 │   └── src/
 │       ├── components/       # Shared components
@@ -115,6 +115,30 @@ For Cloudflare D1, KV, R2, domain, and email service configuration, refer to the
 
 ## Build and Deployment
 
+### 1. Create Cloudflare resources
+
+Create and record the following in the Cloudflare dashboard:
+
+- A Worker;
+- A D1 database and KV namespace;
+- An optional R2 bucket for attachments and background images;
+- A Cloudflare-managed mail domain and, optionally, a Resend delivery configuration.
+
+Bind the resource IDs to the Worker. Edit `mail-worker/wrangler.toml` for manual deployments, or configure the Secrets listed in [`doc/github-action.md`](doc/github-action.md) for GitHub Actions.
+
+### 2. Configure runtime variables
+
+Set at least these values:
+
+- `domain`: an array of domains that can receive and create mailboxes, for example `["example.com"]`;
+- `admin`: the administrator email, which must belong to a configured domain;
+- `jwt_secret`: a long, random, secret string used for login tokens and first-time initialization;
+- `db` and `kv`: the D1 and KV bindings. Their binding names must not change.
+
+Do not reuse example secrets or commit production credentials.
+
+### 3. Build and deploy
+
 Build the frontend:
 
 ```bash
@@ -129,17 +153,23 @@ cd mail-worker
 pnpm deploy
 ```
 
-After the first deployment, visit the existing initialization URL to initialize the database and create the administrator account. The administrator email is read from the `admin` environment variable and can no longer be created through public sign-up:
+### 4. Initialize and sign in
+
+After the first deployment, manually visit the initialization URL below. It creates database tables, runs migrations, and creates the trusted administrator account for the configured `admin` email:
 
 ```bash
 https://your-project-domain/api/init/your-jwt-secret
 ```
 
-The response shows a generated administrator temporary password once; save it immediately, sign in, and change it in Personal Settings. After upgrading from an older version, visit the URL once to write the trusted administrator marker and reset the account password. Do not publicly share or retain the initialization URL because it contains `jwt_secret`.
+The response includes `temporaryPassword`. Save it immediately, sign in with the configured `admin` email, and change the password in Personal Settings. The administrator email is reserved server-side, so neither public sign-up nor OAuth binding can create it.
 
-For an automated deployment, do not configure an automatic initialization URL for the first deployment; open the URL manually to view the temporary password.
+Never share or retain the initialization URL because it contains `jwt_secret`. Do not configure an automatic initialization URL for the first deployment, otherwise the temporary password may only be available in automation logs.
 
-Before deployment, make sure the D1, KV, and R2 bindings and environment variables in the Wrangler configuration are set up. For production, deployment through GitHub Actions or another CI workflow is recommended.
+### 5. Upgrade an existing instance
+
+After deployment, visit the same initialization URL once to run migrations. A trusted administrator is not reset and no new temporary password is returned. The system only takes over the account, generates a new temporary password, and revokes previous sessions when an older administrator account lacks the trusted marker or when the configured `admin` email changes.
+
+After signing in, use System Settings to enable registration, configure invite codes, mail delivery, and object storage as needed. For production, deployment through GitHub Actions or another CI workflow is recommended.
 
 ## Screenshots
 

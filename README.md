@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="doc/demo/logo.png" width="80" alt="Cloud Mail logo" />
+  <img src="mail-vue/public/codex-pet-favicon.png" width="96" alt="k1lla-mailplus mascot" />
 </p>
 
-<h1 align="center">Cloud Mail</h1>
+<h1 align="center">k1lla-mailplus</h1>
 
 <p align="center">
   一个基于 Cloudflare 的 Serverless 邮箱服务，支持多账号管理、邮件收发与附件存储。
@@ -16,7 +16,7 @@
 
 ## 项目简介
 
-Cloud Mail 是一个轻量、响应式的邮箱管理系统。只需要一个域名，就可以创建和管理多个邮箱账号，并通过 Cloudflare 的边缘基础设施部署后端服务，降低传统服务器的运维成本。
+k1lla-mailplus 是一个轻量、响应式的邮箱管理系统。只需要一个域名，就可以创建和管理多个邮箱账号，并通过 Cloudflare 的边缘基础设施部署后端服务，降低传统服务器的运维成本。
 
 这个项目适合作为 Serverless 全栈应用的实践案例，覆盖了前后端分离、权限控制、邮件处理、对象存储和数据可视化等常见工程场景。
 
@@ -61,7 +61,7 @@ Cloud Mail 是一个轻量、响应式的邮箱管理系统。只需要一个域
 ## 项目结构
 
 ```text
-cloud-mail/
+k1lla-mailplus/
 ├── mail-vue/                 # Vue 3 前端应用
 │   └── src/
 │       ├── components/       # 通用组件
@@ -111,6 +111,30 @@ pnpm dev
 
 ## 构建与部署
 
+### 1. 创建 Cloudflare 资源
+
+在 Cloudflare 控制台创建并记录以下资源：
+
+- 一个 Worker；
+- 一个 D1 数据库和一个 KV 命名空间；
+- 可选的 R2 存储桶，用于附件和背景图；
+- 已接入 Cloudflare 的邮件域名，以及可选的 Resend 发信配置。
+
+将资源 ID 绑定到 Worker。手动部署时编辑 `mail-worker/wrangler.toml`；GitHub Actions 部署时按 [`doc/github-action.md`](doc/github-action.md) 配置 Secrets。
+
+### 2. 配置运行变量
+
+至少设置以下变量：
+
+- `domain`：可接收和创建邮箱的域名数组，例如 `["example.com"]`；
+- `admin`：管理员邮箱，必须属于 `domain` 中的域名；
+- `jwt_secret`：随机、保密且足够长的字符串，用于登录令牌和首次初始化；
+- `db` 与 `kv`：D1 和 KV 绑定，绑定名不可改动。
+
+不要复用示例中的密钥，也不要将生产密钥提交到仓库。
+
+### 3. 构建并部署
+
 构建前端：
 
 ```bash
@@ -125,17 +149,23 @@ cd mail-worker
 pnpm deploy
 ```
 
-首次部署后，访问原有初始化地址即可初始化数据库并创建管理员账号。管理员邮箱取自 `admin` 环境变量，不能再通过公开注册页面创建：
+### 4. 首次初始化并登录
+
+首次部署后，手动访问下面的初始化地址。它会创建数据库表、执行迁移，并为 `admin` 配置的邮箱创建可信管理员账号：
 
 ```bash
 https://你的项目域名/api/init/你的jwt_secret
 ```
 
-初始化响应会显示一次随机生成的管理员临时密码；请立即保存它、登录后在个人设置中修改密码。旧版本升级后也应执行一次该初始化地址，为现有账号写入可信管理员标记并重置其密码。请勿公开或长期保留该初始化地址，因为其中包含 `jwt_secret`。
+响应会包含 `temporaryPassword`。立即保存它，使用 `admin` 邮箱登录，然后在“个人设置”中修改密码。管理员邮箱已被服务端保留，公开注册和 OAuth 绑定均不能创建该地址。
 
-如果使用自动化部署，首次部署不要配置自动初始化 URL；应手动打开上述地址以查看临时密码。
+请勿公开或长期保留初始化地址，因为其中包含 `jwt_secret`。首次部署不要配置自动初始化 URL，否则临时密码可能只出现在自动化日志里而无法安全保存。
 
-部署前请确认 Wrangler 配置中的 D1、KV、R2 绑定和环境变量已经完成设置。生产环境建议通过 GitHub Actions 或其他 CI 流程执行部署。
+### 5. 升级已有实例
+
+部署新版本后，再访问一次相同初始化地址即可运行迁移。已经初始化的可信管理员不会被重置，也不会再次返回临时密码。仅当旧管理员账号尚未写入可信标记，或你修改了 `admin` 配置时，系统才会接管该账号、生成新临时密码并撤销旧会话。
+
+完成登录后，按需在系统设置中开启注册、配置注册码、邮件发送服务和对象存储。生产环境建议通过 GitHub Actions 或其他 CI 流程执行部署。
 
 ## 截图
 
