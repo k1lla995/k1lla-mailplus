@@ -1,13 +1,9 @@
 <template>
-  <div id="login-box" :style=" background ? 'background: var(--el-bg-color)' : ''" v-loading="oauthLoading" element-loading-text="登录中...">
-    <div id="background-wrap" v-if="!settingStore.settings.background">
-      <div class="x1 cloud"></div>
-      <div class="x2 cloud"></div>
-      <div class="x3 cloud"></div>
-      <div class="x4 cloud"></div>
-      <div class="x5 cloud"></div>
+  <div id="login-box">
+    <div class="login-background" :style="background"></div>
+    <div class="game-wrapper">
+      <PixelRunner :glass-enabled="settingStore.settings.loginGlass !== 0"/>
     </div>
-    <div v-else :style="background"></div>
     <div class="form-wrapper">
       <div class="container">
         <span class="form-title">{{ settingStore.settings.title }}</span>
@@ -43,9 +39,6 @@
           </el-input>
           <el-button class="btn" type="primary" @click="submit" :loading="loginLoading"
           >{{ $t('loginBtn') }}
-          </el-button>
-          <el-button class="btn" v-if="settingStore.settings.linuxdoSwitch"  style="margin-top: 10px"  @click="linuxDoLogin">
-            <el-avatar src="/image/linuxdo.webp" :size="18" style="margin-right: 10px" />LinuxDo
           </el-button>
         </div>
         <div v-show="show !== 'login'">
@@ -94,9 +87,6 @@
           <el-button class="btn" style="margin: 0" type="primary" @click="submitRegister" :loading="registerLoading"
           >{{ $t('regBtn') }}
           </el-button>
-          <el-button v-if="settingStore.settings.linuxdoSwitch" class="btn" style="margin-top: 10px"  @click="linuxDoLogin">
-            <el-avatar src="/image/linuxdo.webp" :size="18" style="margin-right: 10px" />LinuxDo
-          </el-button>
         </div>
         <template v-if="settingStore.settings.register === 0">
           <div class="switch" @click="show = 'register'" v-if="show === 'login'">{{ $t('noAccount') }}
@@ -106,40 +96,6 @@
         </template>
       </div>
     </div>
-    <el-dialog class="bind-dialog" v-model="showBindForm"  title="注册邮箱" >
-      <div class="bind-container">
-        <el-input :class="!hideLoginDomain ? 'email-input' : ''" v-model="bindForm.email" type="text" :placeholder="$t('emailAccount')" autocomplete="off">
-          <template #append v-if="!hideLoginDomain">
-            <div @click.stop="openSelect">
-              <el-select
-                  ref="mySelect"
-                  v-model="suffix"
-                  :placeholder="$t('select')"
-                  class="select"
-              >
-                <el-option
-                    v-for="item in domainList"
-                    :key="item"
-                    :label="item"
-                    :value="item"
-                />
-              </el-select>
-              <div>
-                <span>{{ suffix }}</span>
-                <Icon class="setting-icon" icon="mingcute:down-small-fill" width="20" height="20"/>
-              </div>
-            </div>
-          </template>
-        </el-input>
-        <el-input v-if="settingStore.settings.regKey === 0" v-model="bindForm.code" :placeholder="$t('regKey')"
-                  type="text" autocomplete="off"/>
-        <el-input v-if="settingStore.settings.regKey === 2" v-model="bindForm.code"
-                  :placeholder="$t('regKeyOptional')" type="text" autocomplete="off"/>
-        <el-button class="btn" type="primary" @click="bind" :loading="bindLoading"
-        >绑定
-        </el-button>
-      </div>
-    </el-dialog>
     <a v-show="settingStore.settings.projectLink" class="github" href="https://github.com/k1lla995/k1lla-mailplus">
       <Icon icon="mingcute:github-line" color="#1890ff" width="20" height="20" />
     </a>
@@ -162,7 +118,7 @@ import {cvtR2Url} from "@/utils/convert.js";
 import {loginUserInfo} from "@/request/my.js";
 import {permsToRouter} from "@/perm/perm.js";
 import {useI18n} from "vue-i18n";
-import {oauthBindUser, oauthLinuxDoLogin} from "@/request/ouath.js";
+import PixelRunner from "@/components/pixel-runner/index.vue";
 
 const {t} = useI18n();
 const accountStore = useAccountStore();
@@ -170,16 +126,7 @@ const userStore = useUserStore();
 const uiStore = useUiStore();
 const settingStore = useSettingStore();
 const loginLoading = ref(false)
-const bindLoading = ref(false)
-const oauthLoading = ref(false);
-const showBindForm = ref(false);
 const show = ref('login')
-
-const bindForm = reactive({
-  email: '',
-  oauthUserId: '',
-  code: ''
-})
 
 const form = reactive({
   email: '',
@@ -261,106 +208,6 @@ const getEmailName = (email) => {
   return email.split('@')[0]
 }
 
-function linuxDoLogin() {
-  const clientId = settingStore.settings.linuxdoClientId
-  const redirectUri = encodeURIComponent(settingStore.settings.linuxdoCallbackUrl)
-  window.location.href =
-      `https://connect.linux.do/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=openid+profile+email`
-}
-
-linuxDoGetUser();
-
-async function linuxDoGetUser() {
-
-  const params = new URLSearchParams(window.location.search)
-  const code = params.get('code')
-
-  if (code) {
-
-    oauthLoading.value = true
-    oauthLinuxDoLogin(code).then(data => {
-
-      bindForm.oauthUserId = data.userInfo.oauthUserId;
-
-      if (!data.token) {
-        showBindForm.value = true
-        oauthLoading.value = false
-        ElMessage({
-          message: '请注册绑定一个邮箱',
-          type: 'warning',
-          duration: 4000,
-          plain: true,
-        })
-        return;
-      }
-
-      saveToken(data.token);
-    }).catch(() => {
-      oauthLoading.value = false
-    })
-  }
-
-  const cleanUrl = window.location.origin + window.location.pathname
-  window.history.replaceState({}, '', cleanUrl)
-}
-
-function bind() {
-
-  if (!bindForm.email) {
-    ElMessage({
-      message: t('emptyEmailMsg'),
-      type: 'error',
-      plain: true,
-    })
-    return
-  }
-
-
-  if (getEmailName(bindForm.email).length < settingStore.settings.minEmailPrefix) {
-    ElMessage({
-      message: t('minEmailPrefix', {msg: settingStore.settings.minEmailPrefix}),
-      type: 'error',
-      plain: true,
-    })
-    return
-  }
-
-  let email = getFullEmail(bindForm.email);
-
-
-  if (!isEmail(email)) {
-    ElMessage({
-      message: t('notEmailMsg'),
-      type: 'error',
-      plain: true,
-    })
-    return
-  }
-
-  if (settingStore.settings.regKey === 0) {
-
-    if (!bindForm.code) {
-
-      ElMessage({
-        message: t('emptyRegKeyMsg'),
-        type: 'error',
-        plain: true,
-      })
-      return
-    }
-
-  }
-
-  const form = {email, oauthUserId: bindForm.oauthUserId, code: bindForm.code}
-
-  bindLoading.value = true
-  oauthBindUser(form).then(data => {
-    saveToken(data.token)
-  }).catch(() => {
-    bindLoading.value = false
-  })
-}
-
 const submit = () => {
 
   if (!form.email) {
@@ -413,8 +260,6 @@ async function saveToken(token) {
   });
   await router.replace({name: 'layout'})
   uiStore.showNotice()
-  oauthLoading.value = false;
-  bindLoading.value = false;
 }
 
 function refreshWebsiteConfig() {
@@ -601,7 +446,40 @@ function submitRegister() {
   align-items: center;
   justify-content: center;
   @media (max-width: 767px) {
+    position: relative;
     width: 100%;
+    min-height: calc(100vh - 170px);
+    height: auto;
+    padding: 16px 0 24px;
+    align-items: flex-start;
+  }
+}
+
+.game-wrapper {
+  position: fixed;
+  inset: 0 450px 0 0;
+  z-index: 20;
+  padding: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+
+  :deep(.pixel-runner) {
+    pointer-events: auto;
+  }
+
+  @media (max-width: 1024px) {
+    right: 384px;
+    padding: 18px;
+  }
+
+  @media (max-width: 767px) {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    padding: 14px 14px 0;
+    align-items: flex-start;
   }
 }
 
@@ -626,7 +504,7 @@ function submitRegister() {
     padding: 20px 18px;
     border-radius: 6px;
     height: fit-content;
-    width: 100%;
+    width: calc(100% - 36px);
     margin-right: 18px;
     margin-left: 18px;
   }
@@ -681,21 +559,6 @@ function submitRegister() {
 
 :deep(.el-select-dropdown__item) {
   padding: 0 10px;
-}
-
-:deep(.bind-dialog) {
-  width: 400px !important;
-  @media (max-width: 440px) {
-    width: calc(100% - 40px) !important;
-    margin-right: 20px !important;
-    margin-left: 20px !important;
-  }
-}
-
-.bind-container {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 15px;
 }
 
 .setting-icon {
@@ -755,7 +618,7 @@ function submitRegister() {
 
 
 #login-box {
-  background: linear-gradient(to bottom, #2980b9, #6dd5fa, #fff);
+  background: var(--el-bg-color-page, #f4f7fb);
   font: 100% Arial, sans-serif;
   height: 100%;
   margin: 0;
@@ -763,80 +626,22 @@ function submitRegister() {
   overflow-x: hidden;
   display: grid;
   grid-template-columns: 1fr;
-}
-
-
-#background-wrap {
-  height: 100%;
-  z-index: 0;
-}
-
-@keyframes animateCloud {
-  0% {
-    margin-left: -500px;
-  }
-
-  100% {
-    margin-left: 100%;
-  }
-}
-
-.x1 {
-  animation: animateCloud 30s linear infinite;
-  transform: scale(0.65);
-}
-
-.x2 {
-  animation: animateCloud 15s linear infinite;
-  transform: scale(0.3);
-}
-
-.x3 {
-  animation: animateCloud 25s linear infinite;
-  transform: scale(0.5);
-}
-
-.x4 {
-  animation: animateCloud 13s linear infinite;
-  transform: scale(0.4);
-}
-
-.x5 {
-  animation: animateCloud 20s linear infinite;
-  transform: scale(0.55);
-}
-
-.cloud {
-  background: linear-gradient(to bottom, #fff 5%, #f1f1f1 100%);
-  border-radius: 100px;
-  box-shadow: 0 8px 5px rgba(0, 0, 0, 0.1);
-  height: 120px;
-  width: 350px;
   position: relative;
+
+  @media (max-width: 767px) {
+    display: block;
+    min-height: 100%;
+    height: auto;
+    overflow-y: auto;
+  }
 }
 
-.cloud:after,
-.cloud:before {
-  content: "";
-  position: absolute;
-  background: #fff;
-  z-index: -1;
-}
-
-.cloud:after {
-  border-radius: 100px;
-  height: 100px;
-  left: 50px;
-  top: -50px;
-  width: 100px;
-}
-
-.cloud:before {
-  border-radius: 200px;
-  height: 180px;
-  width: 180px;
-  right: 50px;
-  top: -90px;
+.login-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: var(--el-bg-color-page, #f4f7fb);
 }
 
 </style>

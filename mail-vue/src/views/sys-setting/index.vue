@@ -136,6 +136,21 @@
                   </div>
                 </div>
               </div>
+              <div class="setting-item glass-setting">
+                <div>
+                  <span>{{ $t('liquidGlass') }}</span>
+                  <small>{{ $t('liquidGlassDesc') }}</small>
+                </div>
+                <div class="glass-toggle-control">
+                  <span class="glass-preview" aria-hidden="true"><i></i></span>
+                  <el-switch
+                      v-model="setting.loginGlass"
+                      :active-value="1"
+                      :inactive-value="0"
+                      @change="changeField('loginGlass', $event)"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1893,6 +1908,72 @@ function editSetting(settingForm, refreshStatus = true) {
     color: var(--secondary-text-color);
     font-size: 12px;
     margin-top: 2px;
+  }
+}
+
+.glass-setting {
+  align-items: center;
+
+  > div:first-child {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  small {
+    display: block;
+    max-width: 250px;
+    color: var(--secondary-text-color);
+    font-size: 12px;
+    line-height: 1.45;
+    margin-top: 2px;
+  }
+}
+
+.glass-toggle-control {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+}
+
+.glass-preview {
+  position: relative;
+  width: 38px;
+  height: 26px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--el-text-color-primary) 16%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--el-bg-color) 16%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 5px 14px rgba(31, 41, 55, 0.12);
+  backdrop-filter: blur(10px) saturate(170%) brightness(1.06);
+  -webkit-backdrop-filter: blur(10px) saturate(170%) brightness(1.06);
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+  }
+
+  &::before {
+    left: 5px;
+    top: 4px;
+    background: #53a8ff;
+  }
+
+  &::after {
+    right: 4px;
+    bottom: 3px;
+    background: #79d6b5;
+  }
+
+  i {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.08);
   }
 }
 
