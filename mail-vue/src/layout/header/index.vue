@@ -10,6 +10,47 @@
       </div>
     </div>
     <mail-search class="mail-search" />
+    <el-dropdown
+      v-if="hasManagementAccess"
+      class="management-dropdown"
+      trigger="click"
+      placement="bottom-start"
+      popper-class="management-menu-popper"
+    >
+      <button class="management-trigger" type="button" :class="{ active: isManagementRoute }" :aria-label="$t('managementCenter')">
+        <Icon icon="solar:settings-linear" width="20" height="20" aria-hidden="true" />
+        <span>{{ $t('managementCenter') }}</span>
+        <Icon class="management-chevron" icon="mingcute:down-small-fill" width="17" height="17" aria-hidden="true" />
+      </button>
+      <template #dropdown>
+        <el-dropdown-menu class="management-menu">
+          <el-dropdown-item v-if="hasPerm('analysis:query')" :class="{ active: route.meta.name === 'analysis' }" @click="openManagement('analysis')">
+            <Icon icon="fluent:data-pie-20-regular" width="19" height="19" />
+            <span>{{ $t('analytics') }}</span>
+          </el-dropdown-item>
+          <el-dropdown-item v-if="hasPerm('user:query')" :class="{ active: route.meta.name === 'user' }" @click="openManagement('user')">
+            <Icon icon="si:user-alt-2-line" width="18" height="18" />
+            <span>{{ $t('allUsers') }}</span>
+          </el-dropdown-item>
+          <el-dropdown-item v-if="hasPerm('all-email:query')" :class="{ active: route.meta.name === 'all-email' }" @click="openManagement('all-email')">
+            <Icon icon="fluent:mail-list-28-regular" width="19" height="19" />
+            <span>{{ $t('allMail') }}</span>
+          </el-dropdown-item>
+          <el-dropdown-item v-if="hasPerm('role:query')" :class="{ active: route.meta.name === 'role' }" @click="openManagement('role')">
+            <Icon icon="fluent:lock-closed-16-regular" width="19" height="19" />
+            <span>{{ $t('permissions') }}</span>
+          </el-dropdown-item>
+          <el-dropdown-item v-if="hasPerm('reg-key:query')" :class="{ active: route.meta.name === 'reg-key' }" @click="openManagement('reg-key')">
+            <Icon icon="fluent:fingerprint-20-filled" width="19" height="19" />
+            <span>{{ $t('inviteCode') }}</span>
+          </el-dropdown-item>
+          <el-dropdown-item v-if="hasPerm('setting:query')" :class="{ active: route.meta.name === 'sys-setting' }" @click="openManagement('sys-setting')">
+            <Icon icon="eos-icons:system-ok-outlined" width="18" height="18" />
+            <span>{{ $t('SystemSettings') }}</span>
+          </el-dropdown-item>
+        </el-dropdown-menu>
+      </template>
+    </el-dropdown>
     <div class="toolbar">
       <div v-if="uiStore.dark" class="sun-icon icon-item" @click="openDark($event)">
         <Icon icon="mingcute:sun-fill"/>
@@ -96,6 +137,10 @@ const uiStore = useUiStore();
 const logoutLoading = ref(false)
 const userInfoShow = ref(false)
 const userinfoRef = ref({})
+const managementPermissions = ['analysis:query', 'user:query', 'all-email:query', 'role:query', 'reg-key:query', 'setting:query']
+const managementRoutes = ['analysis', 'user', 'all-email', 'role', 'reg-key', 'sys-setting']
+const hasManagementAccess = computed(() => managementPermissions.some(hasPerm))
+const isManagementRoute = computed(() => managementRoutes.includes(route.meta.name))
 
 const accountCount = computed(() => {
   return userStore.user.role.accountCount
@@ -238,6 +283,10 @@ function openSend() {
   uiStore.writerRef.open()
 }
 
+function openManagement(name) {
+  router.push({ name })
+}
+
 function changeAside() {
   uiStore.asideShow = !uiStore.asideShow
 }
@@ -260,6 +309,21 @@ function formatName(email) {
 <style>
 .detail-dropdown {
   color: var(--el-text-color-primary) !important;
+}
+
+.management-menu-popper.el-popper {
+  padding: 5px;
+  border: 1px solid color-mix(in srgb, var(--el-border-color) 78%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--el-bg-color) 88%, transparent);
+  box-shadow: 0 14px 36px color-mix(in srgb, #000 18%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+}
+
+.management-menu-popper .el-popper__arrow::before {
+  background: var(--el-bg-color);
+  border-color: var(--el-border-color);
 }
 </style>
 <style lang="scss" scoped>
@@ -363,16 +427,75 @@ function formatName(email) {
   display: grid;
   height: 100%;
   gap: 10px;
-  grid-template-columns: auto auto minmax(260px, 720px) 1fr;
+  grid-template-columns: auto auto minmax(260px, 720px) auto 1fr;
 }
 
 .header.not-send {
-  grid-template-columns: auto minmax(260px, 720px) 1fr;
+  grid-template-columns: auto minmax(260px, 720px) auto 1fr;
 }
 
 .mail-search {
   min-width: 0;
   align-self: center;
+}
+
+.management-dropdown {
+  align-self: center;
+}
+
+.management-trigger {
+  min-height: 40px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--el-text-color-regular);
+  border: 1px solid color-mix(in srgb, var(--el-border-color) 76%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--light-ill) 86%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  cursor: pointer;
+  transition: color .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+
+  span {
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  &:hover,
+  &:focus-visible,
+  &.active {
+    color: var(--el-color-primary);
+    border-color: color-mix(in srgb, var(--el-color-primary) 54%, var(--el-border-color));
+    background: color-mix(in srgb, var(--el-color-primary) 10%, var(--light-ill));
+    box-shadow: 0 5px 16px color-mix(in srgb, var(--el-color-primary) 13%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  }
+
+  &:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--el-color-primary) 50%, transparent);
+    outline-offset: 2px;
+  }
+}
+
+:deep(.management-menu .el-dropdown-menu__item) {
+  min-width: 142px;
+  min-height: 38px;
+  gap: 9px;
+  padding: 0 10px;
+  color: var(--el-text-color-primary);
+  border-radius: 5px;
+  font-size: 13px;
+  line-height: 38px;
+}
+
+:deep(.management-menu .el-dropdown-menu__item:hover),
+:deep(.management-menu .el-dropdown-menu__item.active) {
+  color: var(--el-color-primary);
+  background: color-mix(in srgb, var(--el-color-primary) 11%, transparent);
 }
 
 .writer-box {
@@ -487,7 +610,7 @@ function formatName(email) {
 @media (max-width: 767px) {
   .header,
   .header.not-send {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
     gap: 6px;
   }
 
@@ -500,6 +623,17 @@ function formatName(email) {
 
   .toolbar {
     gap: 2px;
+  }
+
+  .management-trigger {
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+
+    span,
+    .management-chevron {
+      display: none;
+    }
   }
 }
 </style>

@@ -23,6 +23,7 @@ const zh = {
     confirmPassword: '确认密码',
     add: '添加',
     manage: '管理',
+    managementCenter: '管理中心',
     rename: '改名',
     delete: '删除',
     save: '保存',

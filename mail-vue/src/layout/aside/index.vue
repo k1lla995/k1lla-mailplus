@@ -31,39 +31,6 @@
           <Icon icon="fluent:settings-48-regular" width="20" height="20" />
           <span class="menu-name" style="margin-left: 21px">{{$t('settings')}}</span>
         </el-menu-item>
-        <div class="manage-title" v-perm="['all-email:query','user:query','role:query','setting:query','analysis:query','reg-key:query']">
-          <div>{{$t('manage')}}</div>
-        </div>
-        <el-menu-item @click="router.push({name: 'analysis'})" index="analysis" v-perm="'analysis:query'"
-                      :class="route.meta.name === 'analysis' ? 'choose-item' : ''">
-          <Icon icon="fluent:data-pie-20-regular" width="24" height="24" />
-          <span class="menu-name" style="margin-left: 18px">{{$t('analytics')}}</span>
-        </el-menu-item>
-        <el-menu-item @click="router.push({name: 'user'})" index="setting" v-perm="'user:query'"
-                      :class="route.meta.name === 'user' ? 'choose-item' : ''">
-          <Icon icon="si:user-alt-2-line" width="20" height="20" />
-          <span class="menu-name" style="margin-left: 21px">{{$t('allUsers')}}</span>
-        </el-menu-item>
-        <el-menu-item @click="router.push({name: 'all-email'})" index="all-email" v-perm="'all-email:query'"
-                      :class="route.meta.name === 'all-email' ? 'choose-item' : ''">
-          <Icon icon="fluent:mail-list-28-regular" width="22" height="22" />
-          <span class="menu-name" style="margin-left: 20px">{{$t('allMail')}}</span>
-        </el-menu-item>
-        <el-menu-item @click="router.push({name: 'role'})" index="setting" v-perm="'role:query'"
-                      :class="route.meta.name === 'role' ? 'choose-item' : ''">
-          <Icon icon="fluent:lock-closed-16-regular" width="22" height="22" />
-          <span class="menu-name" style="margin-left: 20px">{{$t('permissions')}}</span>
-        </el-menu-item>
-        <el-menu-item @click="router.push({name: 'reg-key'})" index="reg-key" v-perm="'reg-key:query'"
-                      :class="route.meta.name === 'reg-key' ? 'choose-item' : ''">
-          <Icon icon="fluent:fingerprint-20-filled" width="22" height="22" />
-          <span class="menu-name" style="margin-left: 20px">{{$t('inviteCode')}}</span>
-        </el-menu-item>
-        <el-menu-item @click="router.push({name: 'sys-setting'})" index="sys-setting" v-perm="'setting:query'"
-                      :class="route.meta.name === 'sys-setting' ? 'choose-item' : ''">
-          <Icon icon="eos-icons:system-ok-outlined" width="18" height="18" style="margin-left: 2px" />
-          <span class="menu-name" style="margin-left: 22px">{{$t('SystemSettings')}}</span>
-        </el-menu-item>
       </el-menu>
     </div>
   </el-scrollbar>
@@ -120,14 +87,6 @@ const route = useRoute();
 
 }
 
-
-.manage-title {
-  margin-top: 10px;
-  padding-left: 20px;
-  color: var(--aside-muted-text-color);
-  font-size: 13px;
-  font-weight: 600;
-}
 
 .el-menu-item {
   margin: 5px 10px !important;
