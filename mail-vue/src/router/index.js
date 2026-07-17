@@ -51,6 +51,16 @@ const routes = [
                     menu: true
                 }
             },
+            {
+                path: '/contacts',
+                name: 'contact',
+                component: () => import('@/views/contact/index.vue'),
+                meta: {
+                    title: 'contacts',
+                    name: 'contact',
+                    menu: true
+                }
+            },
         ]
 
     },

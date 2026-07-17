@@ -541,6 +541,7 @@ function formatName(email) {
 }
 
 .toolbar {
+  grid-column: -2 / -1;
   display: flex;
   justify-content: end;
   gap: 15px;

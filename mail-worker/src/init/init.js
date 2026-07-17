@@ -42,7 +42,26 @@ const dbInit = {
 		await this.v3_3DB(c);
 		await this.v3_4DB(c);
 		await this.v3_5DB(c);
+		await this.v3_6DB(c);
 		await settingService.refresh(c);
+	},
+
+	async v3_6DB(c) {
+		await c.env.db.batch([
+			c.env.db.prepare(`
+				CREATE TABLE IF NOT EXISTS contact (
+					contact_id INTEGER PRIMARY KEY AUTOINCREMENT,
+					user_id INTEGER NOT NULL,
+					email TEXT NOT NULL,
+					nickname TEXT NOT NULL DEFAULT '',
+					birthday TEXT NOT NULL DEFAULT '',
+					phone TEXT NOT NULL DEFAULT '',
+					create_time DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+				)
+			`),
+			c.env.db.prepare(`CREATE INDEX IF NOT EXISTS idx_contact_user_id ON contact(user_id)`),
+			c.env.db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_contact_user_email_nocase ON contact(user_id, email COLLATE NOCASE)`)
+		]);
 	},
 
 	async v3_4DB(c) {

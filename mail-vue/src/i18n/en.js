@@ -2,6 +2,7 @@ const en = {
     inbox: 'Inbox',
     drafts: 'Drafts',
     sent: 'Sent',
+    contacts: 'Contacts',
     starred: 'Starred',
     settings: 'Settings',
     analytics: 'Analytics',
@@ -367,7 +368,27 @@ const en = {
     hasAttachments: 'Has attachments',
     noAttachments: 'No attachments',
     matchingMessages: 'Best matches',
-    searchHint: 'Type a keyword or open filters to search'
+    searchHint: 'Type a keyword or open filters to search',
+    addContact: 'Add contact',
+    deleteContacts: 'Delete contacts',
+    refreshContacts: 'Refresh contacts',
+    contactEmail: 'Contact email',
+    contactNickname: 'Nickname',
+    contactBirthday: 'Birthday',
+    contactPhone: 'Phone',
+    contactCreatedAt: 'Added at',
+    contactSearch: 'Search contacts',
+    contactEmailPrefix: 'Email prefix',
+    contactEmailSuffix: 'Email suffix',
+    contactAddedAfter: 'Added after',
+    contactAddedBefore: 'Added before',
+    contactHistory: 'Email history',
+    noContactHistory: 'No email history with this contact',
+    noContacts: 'You have not added any contacts yet',
+    contactEmailRequired: 'Enter a contact email',
+    selectContactsForDeletion: 'Select contacts to delete',
+    deleteContactsConfirm: 'Delete the selected contacts?',
+    contactAdded: 'Contact added'
 }
 
 export default en

@@ -16,6 +16,11 @@
           <Icon icon="cil:send" width="20" height="20" />
           <span class="menu-name" style="margin-left: 21px">{{$t('sent')}}</span>
         </el-menu-item>
+        <el-menu-item @click="router.push({name: 'contact'})" index="contact"
+                      :class="route.meta.name === 'contact' ? 'choose-item' : ''">
+          <Icon icon="material-symbols:person-add-outline" width="21" height="21" />
+          <span class="menu-name" style="margin-left: 20px">{{$t('contacts')}}</span>
+        </el-menu-item>
         <el-menu-item @click="router.push({name: 'draft'})" index="draft" v-perm="'email:send'"
                       :class="route.meta.name === 'draft' ? 'choose-item' : ''">
           <Icon icon="ep:document" width="19" height="19" />
