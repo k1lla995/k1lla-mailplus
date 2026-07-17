@@ -153,6 +153,7 @@ function formatDate(value) { return value?.replace('T', ' ').slice(0, 16) || '' 
 .search-icon { flex: 0 0 auto; color: var(--el-text-color-regular); }
 .mail-search-input { width: 100%; min-width: 0; height: 38px; padding: 0 10px; color: var(--el-text-color-primary); font-size: 14px; background: transparent; }
 .mail-search-input::placeholder { color: var(--secondary-text-color); }
+.mail-search-input::-webkit-search-cancel-button { appearance: none; -webkit-appearance: none; }
 .clear-button, .filter-button { position: relative; width: 32px; height: 32px; flex: 0 0 32px; display: grid; place-items: center; color: var(--regular-text-color); border-radius: 6px; cursor: pointer; transition: background .18s ease, color .18s ease; }
 .clear-button:hover, .filter-button:hover { color: var(--el-color-primary); background: color-mix(in srgb, var(--el-color-primary) 11%, transparent); }
 .filter-count { position: absolute; top: 2px; right: 1px; min-width: 14px; height: 14px; padding: 0 3px; display: grid; place-items: center; color: #fff; background: var(--el-color-primary); border-radius: 7px; font-size: 10px; font-weight: 700; line-height: 1; }
