@@ -147,7 +147,7 @@ const emailService = {
 
 	async search(c, params, userId) {
 		let { query, recipient, sender, attachmentFormat, words, after, before, minSize, maxSize, hasAttachment, limit } = params;
-		limit = Math.min(Math.max(Number(limit) || 8, 1), 20);
+		limit = Math.min(Math.max(Number(limit) || 50, 1), 50);
 
 		const conditions = [
 			eq(email.userId, userId),
