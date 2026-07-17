@@ -146,7 +146,7 @@ const emailService = {
 	},
 
 	async search(c, params, userId) {
-		let { query, recipient, sender, subject, words, after, before, minSize, maxSize, hasAttachment, limit } = params;
+		let { query, recipient, sender, attachmentFormat, words, after, before, minSize, maxSize, hasAttachment, limit } = params;
 		limit = Math.min(Math.max(Number(limit) || 8, 1), 20);
 
 		const conditions = [
@@ -164,7 +164,23 @@ const emailService = {
 		}
 		if (recipient?.trim()) conditions.push(contains(email.toEmail, recipient));
 		if (sender?.trim()) conditions.push(or(contains(email.sendEmail, sender), contains(email.name, sender)));
-		if (subject?.trim()) conditions.push(contains(email.subject, subject));
+		const attachmentFormats = String(attachmentFormat || '')
+			.toLowerCase()
+			.split(/[\s,;]+/)
+			.map(format => format.trim().replace(/^\.+/, ''))
+			.filter(format => /^[a-z0-9][a-z0-9.+-]{0,31}$/i.test(format))
+			.slice(0, 12);
+		if (attachmentFormats.length) {
+			conditions.push(sql`EXISTS (
+				SELECT 1 FROM attachments a
+				WHERE a.email_id = ${email.emailId}
+					AND a.type = ${attConst.type.ATT}
+					AND (${or(...attachmentFormats.map(format => sql`(
+						a.filename COLLATE NOCASE LIKE ${'%.' + format}
+						OR a.key COLLATE NOCASE LIKE ${'%.' + format}
+					)`))})
+			)`);
+		}
 		if (words?.trim()) conditions.push(or(contains(email.subject, words), contains(email.text, words), contains(email.content, words)));
 		if (after) conditions.push(gte(email.createTime, `${after} 00:00:00`));
 		if (before) conditions.push(lte(email.createTime, `${before} 23:59:59`));

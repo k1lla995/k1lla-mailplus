@@ -1,6 +1,10 @@
 <template>
   <div ref="root" class="mail-search-shell">
     <div class="mail-search-bar" :class="{ focused: open, 'has-filters': activeFilterCount }">
+      <button class="filter-button" type="button" :aria-label="t('advancedFilters')" :aria-expanded="showFilters" :title="t('advancedFilters')" @click="toggleFilters">
+        <Icon icon="solar:tuning-2-linear" width="20" height="20" />
+        <span v-if="activeFilterCount" class="filter-count">{{ activeFilterCount }}</span>
+      </button>
       <Icon class="search-icon" icon="iconoir:search" width="20" height="20" aria-hidden="true" />
       <input
         ref="input"
@@ -17,10 +21,6 @@
       <button v-if="hasSearch" class="clear-button" type="button" :aria-label="t('clear')" @click="clearAll">
         <Icon icon="mingcute:close-circle-fill" width="18" height="18" />
       </button>
-      <button class="filter-button" type="button" :aria-label="t('advancedFilters')" :aria-expanded="showFilters" @click="toggleFilters">
-        <Icon icon="solar:tuning-2-linear" width="20" height="20" />
-        <span v-if="activeFilterCount" class="filter-count">{{ activeFilterCount }}</span>
-      </button>
     </div>
 
     <Transition name="search-panel">
@@ -28,7 +28,7 @@
         <div v-if="showFilters" class="filter-grid">
           <label><span>{{ t('recipient') }}</span><input v-model="filters.recipient" type="text" autocomplete="off" :placeholder="t('searchRecipient')" /></label>
           <label><span>{{ t('sender') }}</span><input v-model="filters.sender" type="text" autocomplete="off" :placeholder="t('searchSender')" /></label>
-          <label><span>{{ t('subject') }}</span><input v-model="filters.subject" type="text" autocomplete="off" :placeholder="t('searchSubject')" /></label>
+          <label><span>{{ t('attachmentFormat') }}</span><input v-model="filters.attachmentFormat" type="text" autocomplete="off" spellcheck="false" :placeholder="t('searchAttachmentFormat')" /></label>
           <label><span>{{ t('containsWords') }}</span><input v-model="filters.words" type="text" autocomplete="off" :placeholder="t('searchWords')" /></label>
           <label><span>{{ t('afterDate') }}</span><input v-model="filters.after" type="date" /></label>
           <label><span>{{ t('beforeDate') }}</span><input v-model="filters.before" type="date" /></label>
@@ -41,7 +41,7 @@
           <div class="results-heading"><span>{{ t('matchingMessages') }}</span><span v-if="loading" class="loading-dot"></span></div>
           <button v-for="message in results" :key="message.emailId" type="button" class="search-result" @click="openMessage(message)">
             <div class="result-avatar">{{ initial(message.name || message.sendEmail) }}</div>
-            <div class="result-copy"><strong>{{ message.name || message.sendEmail }}</strong><span>{{ message.subject || t('noSubject') }}</span><small>{{ message.sendEmail }} / {{ formatDate(message.createTime) }}</small></div>
+            <div class="result-copy"><strong>{{ message.name || message.sendEmail }}</strong><span>{{ message.subject || t('noSubject') }}</span><small v-if="matchedAttachmentNames(message).length" class="matched-attachments"><Icon icon="mdi:paperclip" width="11" height="11" />{{ matchedAttachmentNames(message).join(', ') }}</small><small v-else>{{ message.sendEmail }} / {{ formatDate(message.createTime) }}</small></div>
             <Icon v-if="message.attList?.length" class="attachment-icon" icon="mdi:paperclip" width="17" height="17" />
           </button>
           <div v-if="!loading && !results.length" class="no-results">{{ t('noMessagesFound') }}</div>
@@ -72,7 +72,7 @@ const results = ref([])
 let debounceTimer
 let requestId = 0
 
-const filters = reactive({ query: '', recipient: '', sender: '', subject: '', words: '', after: '', before: '', minSize: '', maxSize: '', hasAttachment: '' })
+const filters = reactive({ query: '', recipient: '', sender: '', attachmentFormat: '', words: '', after: '', before: '', minSize: '', maxSize: '', hasAttachment: '' })
 const hasSearch = computed(() => Object.values(filters).some(value => value !== ''))
 const activeFilterCount = computed(() => Object.entries(filters).filter(([key, value]) => key !== 'query' && value !== '').length)
 
@@ -144,6 +144,14 @@ function openMessage(message) {
 
 function initial(value = '') { return value.trim().charAt(0).toUpperCase() || '?' }
 function formatDate(value) { return value?.replace('T', ' ').slice(0, 16) || '' }
+function matchedAttachmentNames(message) {
+  const formats = filters.attachmentFormat.toLowerCase().split(/[\s,;]+/).map(item => item.replace(/^\.+/, '')).filter(Boolean)
+  if (!formats.length) return []
+  return (message.attList || []).filter(item => {
+    const value = (item.filename || item.key || '').toLowerCase()
+    return formats.some(format => value.endsWith(`.${format}`))
+  }).map(item => item.filename || item.key).slice(0, 2)
+}
 </script>
 
 <style scoped lang="scss">
@@ -164,7 +172,7 @@ function formatDate(value) { return value?.replace('T', ' ').slice(0, 16) || '' 
 .filter-grid input:focus, .filter-grid select:focus { border-color: var(--el-color-primary); box-shadow: 0 0 0 2px color-mix(in srgb, var(--el-color-primary) 17%, transparent); }
 .unit-input { position: relative; }.unit-input input { padding-right: 29px; }.unit-input b { position: absolute; right: 8px; top: 8px; color: var(--secondary-text-color); font-size: 10px; }
 .search-results { max-height: min(440px, calc(100vh - 180px)); overflow: auto; padding: 7px; }.results-heading { padding: 5px 7px 7px; display: flex; align-items: center; gap: 6px; color: var(--secondary-text-color); font-size: 11px; font-weight: 700; }.loading-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--el-color-primary); animation: pulse 1s ease infinite; }
-.search-result { width: 100%; min-height: 56px; padding: 7px; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 9px; text-align: left; color: inherit; border-radius: 6px; cursor: pointer; transition: background .18s ease; }.search-result:hover, .search-result:focus-visible { background: color-mix(in srgb, var(--el-color-primary) 10%, transparent); }.result-avatar { width: 32px; height: 32px; display: grid; place-items: center; color: var(--el-color-primary-dark-2); background: var(--el-color-primary-light-9); border: 1px solid color-mix(in srgb, var(--el-color-primary) 20%, transparent); border-radius: 50%; font-size: 13px; font-weight: 700; }.result-copy { min-width: 0; display: grid; gap: 1px; }.result-copy strong, .result-copy span, .result-copy small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }.result-copy strong { font-size: 13px; }.result-copy span { font-size: 12px; }.result-copy small { color: var(--secondary-text-color); font-size: 10px; }.attachment-icon { color: var(--secondary-text-color); }
+.search-result { width: 100%; min-height: 56px; padding: 7px; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 9px; text-align: left; color: inherit; border-radius: 6px; cursor: pointer; transition: background .18s ease; }.search-result:hover, .search-result:focus-visible { background: color-mix(in srgb, var(--el-color-primary) 10%, transparent); }.result-avatar { width: 32px; height: 32px; display: grid; place-items: center; color: var(--el-color-primary-dark-2); background: var(--el-color-primary-light-9); border: 1px solid color-mix(in srgb, var(--el-color-primary) 20%, transparent); border-radius: 50%; font-size: 13px; font-weight: 700; }.result-copy { min-width: 0; display: grid; gap: 1px; }.result-copy strong, .result-copy span, .result-copy small { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }.result-copy strong { font-size: 13px; }.result-copy span { font-size: 12px; }.result-copy small { color: var(--secondary-text-color); font-size: 10px; }.matched-attachments { display: inline-flex; align-items: center; gap: 3px; color: var(--el-color-primary-dark-2) !important; }.attachment-icon { color: var(--secondary-text-color); }
 .no-results, .search-hint { min-height: 70px; padding: 18px; display: flex; align-items: center; justify-content: center; gap: 8px; color: var(--secondary-text-color); font-size: 12px; }.search-hint { justify-content: flex-start; }
 .search-panel-enter-active, .search-panel-leave-active { transition: opacity .16s ease, transform .16s ease; }.search-panel-enter-from, .search-panel-leave-to { opacity: 0; transform: translateY(-5px); }
 @keyframes pulse { 50% { opacity: .25; transform: scale(.7); } }
