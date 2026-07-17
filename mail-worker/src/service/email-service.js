@@ -1,6 +1,6 @@
 import orm from '../entity/orm';
 import email from '../entity/email';
-import { attConst, emailConst, isDel, settingConst } from '../const/entity-const';
+import { attConst, emailConst, isDel, recycleReasonConst, settingConst } from '../const/entity-const';
 import { and, desc, eq, gt, inArray, lt, count, asc, sql, ne, or, like, lte, gte } from 'drizzle-orm';
 import { star } from '../entity/star';
 import settingService from './setting-service';
@@ -140,7 +140,8 @@ const emailService = {
 		const emailIdList = emailIds.split(',').map(Number);
 		await orm(c).update(email).set({
 			isDel: isDel.DELETE,
-			deleteTime: dayjs().format('YYYY-MM-DD HH:mm:ss')
+			deleteTime: dayjs().format('YYYY-MM-DD HH:mm:ss'),
+			recycleReason: recycleReasonConst.RECENT_DELETE
 		}).where(
 			and(
 				eq(email.userId, userId),
@@ -195,7 +196,7 @@ const emailService = {
 	async restore(c, params, userId) {
 		const emailIds = String(params.emailIds || '').split(',').map(Number).filter(Number.isFinite);
 		if (!emailIds.length) return 0;
-		const result = await orm(c).update(email).set({ isDel: isDel.NORMAL, deleteTime: null }).where(and(
+		const result = await orm(c).update(email).set({ isDel: isDel.NORMAL, deleteTime: null, recycleReason: null }).where(and(
 			eq(email.userId, userId), eq(email.isDel, isDel.DELETE), inArray(email.emailId, emailIds)
 		)).run();
 		return result.meta?.changes || 0;
@@ -1075,13 +1076,14 @@ const emailService = {
 	},
 
 	async restoreByUserId(c, userId) {
-		await orm(c).update(email).set({ isDel: isDel.NORMAL }).where(eq(email.userId, userId)).run();
+		await orm(c).update(email).set({ isDel: isDel.NORMAL, recycleReason: null }).where(eq(email.userId, userId)).run();
 	},
 
-	async completeReceive(c, status, emailId, moveToRecycle = false) {
+	async completeReceive(c, status, emailId, moveToRecycle = false, recycleReason = null) {
 		return await orm(c).update(email).set({
 			isDel: moveToRecycle ? isDel.DELETE : isDel.NORMAL,
 			deleteTime: moveToRecycle ? sql`CURRENT_TIMESTAMP` : null,
+			recycleReason: moveToRecycle ? recycleReason : null,
 			status: status
 		}).where(eq(email.emailId, emailId)).returning().get();
 	},

@@ -149,3 +149,10 @@ export const isDel = {
 	DELETE: 1,
 	NORMAL: 0
 }
+
+export const recycleReasonConst = {
+	AUTO_SPAM: 'auto_spam',
+	MANUAL_RULE: 'manual_rule',
+	BLACKLIST: 'blacklist',
+	RECENT_DELETE: 'recent_delete'
+}

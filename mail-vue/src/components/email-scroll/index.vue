@@ -88,6 +88,9 @@
                   <div class="email-text">
                     <span class="email-subject" :style="(item.unread === EmailUnreadEnum.UNREAD && showUnread)  ? 'font-weight: bold' : ''">
                       <div class="unread" v-if="!isMobile && (item.unread === EmailUnreadEnum.UNREAD && showUnread) "/>
+                      <span v-if="recycleMode" class="recycle-reason" :class="`recycle-reason--${item.recycleReason || 'recent_delete'}`">
+                        {{ recycleReasonLabel(item.recycleReason) }}
+                      </span>
                       <span v-if="item.code" class="code-tag" @click.stop="copyCode(item.code)">[{{ t('codeLabel') }}{{ item.code }}]</span>
                       <span class="subject-text">
                         <slot name="subject" :email="item" >
@@ -323,6 +326,15 @@ const props = defineProps({
 
 const emit = defineEmits(['jump', 'refresh-before', 'delete-draft', 'right-search'])
 const {t} = useI18n()
+
+function recycleReasonLabel(reason) {
+  return t({
+    auto_spam: 'recycleReasonAutoSpam',
+    manual_rule: 'recycleReasonManualRule',
+    blacklist: 'recycleReasonBlacklist',
+    recent_delete: 'recycleReasonRecentDelete'
+  }[reason] || 'recycleReasonRecentDelete')
+}
 const settingStore = useSettingStore()
 const uiStore = useUiStore();
 const emailStore = useEmailStore();
@@ -1232,6 +1244,41 @@ function loadData() {
         white-space: nowrap;
         text-overflow: ellipsis;
         cursor: pointer;
+      }
+
+      .recycle-reason {
+        flex: 0 0 auto;
+        max-width: 124px;
+        height: 20px;
+        padding: 0 7px;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        color: var(--el-color-info-dark-2);
+        background: var(--el-color-info-light-9);
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 18px;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+
+        &--auto_spam {
+          color: var(--el-color-warning-dark-2);
+          border-color: var(--el-color-warning-light-7);
+          background: var(--el-color-warning-light-9);
+        }
+
+        &--manual_rule {
+          color: var(--el-color-primary-dark-2);
+          border-color: var(--el-color-primary-light-7);
+          background: var(--el-color-primary-light-9);
+        }
+
+        &--blacklist {
+          color: var(--el-color-danger-dark-2);
+          border-color: var(--el-color-danger-light-7);
+          background: var(--el-color-danger-light-9);
+        }
       }
 
       .subject-text {

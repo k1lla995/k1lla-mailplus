@@ -5,7 +5,7 @@ import settingService from '../service/setting-service';
 import attService from '../service/att-service';
 import constant from '../const/constant';
 import fileUtils from '../utils/file-utils';
-import { emailConst, isDel, settingConst } from '../const/entity-const';
+import { emailConst, isDel, recycleReasonConst, settingConst } from '../const/entity-const';
 import emailUtils from '../utils/email-utils';
 import roleService from '../service/role-service';
 import userService from '../service/user-service';
@@ -13,6 +13,7 @@ import telegramService from '../service/telegram-service';
 import aiService from '../service/ai-service';
 import adminUtils from '../utils/admin-utils';
 import disposableDomainService from '../service/disposable-domain-service';
+import { resolveRecycleReason } from '../utils/recycle-reason-utils';
 
 export async function email(message, env, ctx) {
 
@@ -52,7 +53,7 @@ export async function email(message, env, ctx) {
 		const email = await PostalMime.parse(content);
 
 
-		const blockFlag = checkBlock(blackSubject, blackContent, blackFrom, email);
+		const ruleReason = checkBlock(blackSubject, blackContent, blackFrom, email);
 		const spamFlag = checkSpam(email);
 		const disposableDomainFlag = disposableDomainService.isDisposable(email.from?.address);
 
@@ -93,7 +94,12 @@ export async function email(message, env, ctx) {
 		const toName = email.to.find(item => item.address === message.to)?.name || '';
 		const code = await aiService.extractCode({ env }, email, { aiCode, aiCodeFilter });
 
-		const moveToRecycle = blockFlag || recipientBlocked || spamFlag || disposableDomainFlag;
+		const recycleReason = resolveRecycleReason({
+			automaticSpam: spamFlag || disposableDomainFlag,
+			manualRule: ruleReason === recycleReasonConst.MANUAL_RULE,
+			blacklisted: ruleReason === recycleReasonConst.BLACKLIST || recipientBlocked
+		});
+		const moveToRecycle = recycleReason != null;
 		const params = {
 			toEmail: message.to,
 			toName: toName,
@@ -113,6 +119,7 @@ export async function email(message, env, ctx) {
 			accountId: account ? account.accountId : 0,
 			isDel: isDel.DELETE,
 			deleteTime: moveToRecycle ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null,
+			recycleReason,
 			status: emailConst.status.SAVING
 		};
 
@@ -145,7 +152,7 @@ export async function email(message, env, ctx) {
 			console.error(e);
 		}
 
-		emailRow = await emailService.completeReceive({ env }, account ? emailConst.status.RECEIVE : emailConst.status.NOONE, emailRow.emailId, moveToRecycle);
+		emailRow = await emailService.completeReceive({ env }, account ? emailConst.status.RECEIVE : emailConst.status.NOONE, emailRow.emailId, moveToRecycle, recycleReason);
 
 		if (moveToRecycle) {
 			return;
@@ -198,23 +205,23 @@ function checkBlock(blackSubjectStr, blackContentStr, blackFromStr, email) {
 
 	for (const blackSubject of blackSubjectList) {
 		if (email.subject?.includes(blackSubject)) {
-			return true
+			return recycleReasonConst.MANUAL_RULE
 		}
 	}
 
 	for (const blackContent of blackContentList) {
 		if (email.html?.includes(blackContent) || email.text?.includes(blackContent)) {
-			return true
+			return recycleReasonConst.MANUAL_RULE
 		}
 	}
 
 	for (const blackFrom of blackFromList) {
 		if (email.from.address === blackFrom || emailUtils.getDomain(email.from.address) === blackFrom) {
-			return true
+			return recycleReasonConst.BLACKLIST
 		}
 	}
 
-	return false
+	return null
 
 }
 

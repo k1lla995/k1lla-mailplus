@@ -44,7 +44,17 @@ const dbInit = {
 		await this.v3_5DB(c);
 		await this.v3_6DB(c);
 		await this.v3_7DB(c);
+		await this.v3_8DB(c);
 		await settingService.refresh(c);
+	},
+
+	async v3_8DB(c) {
+		try {
+			await c.env.db.prepare(`ALTER TABLE email ADD COLUMN recycle_reason TEXT;`).run();
+		} catch (e) {
+			console.warn(`Skip recycle-reason migration: ${e.message}`);
+		}
+		await c.env.db.prepare(`UPDATE email SET recycle_reason = 'recent_delete' WHERE is_del = 1 AND recycle_reason IS NULL;`).run();
 	},
 
 	async v3_7DB(c) {

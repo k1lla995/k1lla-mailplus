@@ -28,7 +28,7 @@
         </el-menu-item>
         <el-menu-item @click="router.push({name: 'recycle'})" index="recycle" v-perm="'email:delete'"
                       :class="route.meta.name === 'recycle' ? 'choose-item' : ''">
-          <Icon icon="material-symbols:delete-outline-rounded" width="20" height="20" />
+          <Icon class="recycle-menu-icon" icon="solar:trash-bin-trash-linear" width="20" height="20" />
           <span class="menu-name" style="margin-left: 21px">{{$t('recycleBin')}}</span>
         </el-menu-item>
         <el-menu-item @click="router.push({name: 'star'})" index="star"
@@ -125,6 +125,10 @@ const route = useRoute();
 }
 
 .contact-menu-icon {
+  color: currentColor;
+}
+
+.recycle-menu-icon {
   color: currentColor;
 }
 

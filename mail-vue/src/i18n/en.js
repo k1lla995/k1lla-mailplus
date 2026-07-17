@@ -408,6 +408,10 @@ const en = {
     recycleEmpty: 'Trash is empty. Deleted emails are kept here for 30 days.',
     recycleExpiryNotice: '{count} email(s) will be permanently deleted within 7 days.',
     recycleAutoCleaned: '30-day cleanup completed: {count} email(s) permanently deleted.',
+    recycleReasonAutoSpam: 'Auto-detected spam',
+    recycleReasonManualRule: 'Manual rule',
+    recycleReasonBlacklist: 'Blacklist rule',
+    recycleReasonRecentDelete: 'Recently deleted',
     includeRecycle: 'Include Trash',
     includeRecycleHint: 'Searches deleted emails too. They can still be restored from Trash.'
 }
