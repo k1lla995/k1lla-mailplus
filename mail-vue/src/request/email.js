@@ -12,8 +12,8 @@ export function emailDelete(emailIds) {
     return http.delete('/email/delete?emailIds=' + emailIds)
 }
 
-export function recycleList(emailId, size, timeSort = 0, query = '') {
-    return http.get('/email/recycle', { params: { emailId, size, timeSort, query } })
+export function recycleList(emailId, size, timeSort = 0, query = '', recycleReason = '') {
+    return http.get('/email/recycle', { params: { emailId, size, timeSort, query, recycleReason } })
 }
 
 export function emailRestore(emailIds) {

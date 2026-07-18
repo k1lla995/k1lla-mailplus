@@ -150,7 +150,7 @@ const emailService = {
 	},
 
 	async recycleList(c, params, userId) {
-		let { emailId, size, timeSort, query: searchQuery } = params;
+		let { emailId, size, timeSort, query: searchQuery, recycleReason } = params;
 		size = Math.min(Math.max(Number(size) || 50, 1), 50);
 		emailId = Number(emailId) || (Number(timeSort) ? 0 : 9999999999);
 		timeSort = Number(timeSort);
@@ -161,6 +161,9 @@ const emailService = {
 			eq(email.isDel, isDel.DELETE),
 			ne(email.status, emailConst.status.SAVING)
 		];
+		if (Object.values(recycleReasonConst).includes(recycleReason)) {
+			baseFilters.push(eq(email.recycleReason, recycleReason));
+		}
 		if (searchQuery?.trim()) {
 			const value = '%' + searchQuery.trim() + '%';
 			baseFilters.push(or(

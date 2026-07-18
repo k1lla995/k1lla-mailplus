@@ -392,6 +392,8 @@ const zh = {
     contactAdded: '\u8054\u7cfb\u4eba\u5df2\u6dfb\u52a0',
     recycleBin: '\u56de\u6536\u7ad9',
     searchRecycle: '\u641c\u7d22\u56de\u6536\u7ad9',
+    recycleReasonFilter: '\u56de\u6536\u7ad9\u90ae\u4ef6\u7c7b\u578b',
+    recycleFilterAll: '\u5168\u90e8',
     moveToRecycleConfirm: '\u786e\u5b9a\u5c06\u9009\u4e2d\u90ae\u4ef6\u79fb\u5165\u56de\u6536\u7ad9\uff1f',
     movedToRecycle: '\u5df2\u79fb\u5165\u56de\u6536\u7ad9',
     recycleRestoreSuccess: '\u90ae\u4ef6\u5df2\u6062\u590d',

@@ -392,6 +392,8 @@ const en = {
     contactAdded: 'Contact added',
     recycleBin: 'Trash',
     searchRecycle: 'Search Trash',
+    recycleReasonFilter: 'Trash email category',
+    recycleFilterAll: 'All',
     moveToRecycleConfirm: 'Move the selected email to Trash?',
     movedToRecycle: 'Moved to Trash',
     recycleRestoreSuccess: 'Email restored',
