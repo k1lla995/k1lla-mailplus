@@ -29,14 +29,40 @@ function expiresAt() {
 const userTelegramService = {
 	async get(c, userId = userContext.getUserId(c)) {
 		const row = await orm(c).select().from(userTelegram).where(eq(userTelegram.userId, userId)).get();
-		return row || {
+		if (row) return row;
+
+		// Root admin is authorized by default even before a user_telegram row exists.
+		const ctxUser = c.get?.('user');
+		let isRoot = false;
+		if (ctxUser && Number(ctxUser.userId) === Number(userId)) {
+			isRoot = adminUtils.isAdminUser(ctxUser, c.env.admin);
+		} else {
+			const owner = await orm(c).select().from(user).where(eq(user.userId, userId)).get();
+			isRoot = adminUtils.isAdminUser(owner, c.env.admin);
+		}
+
+		return {
 			userId,
-			authorized: adminUtils.isAdminUser(c.get?.('user'), c.env.admin) ? 1 : 0,
+			authorized: isRoot ? 1 : 0,
 			pushEnabled: 0,
 			chatId: '',
 			chatUsername: '',
 			boundAt: null
 		};
+	},
+
+	async ensureRootAuthorization(c, userId) {
+		await orm(c).insert(userTelegram).values({
+			userId,
+			authorized: 1,
+			updatedAt: new Date().toISOString()
+		}).onConflictDoUpdate({
+			target: userTelegram.userId,
+			set: {
+				authorized: 1,
+				updatedAt: new Date().toISOString()
+			}
+		}).run();
 	},
 
 	async setAuthorization(c, params) {
@@ -50,6 +76,10 @@ const userTelegramService = {
 		const target = await orm(c).select().from(user).where(eq(user.userId, Number(userId))).get();
 		if (!target || target.isDel !== isDel.NORMAL) {
 			throw new BizError('User does not exist');
+		}
+		// Root admin cannot be de-authorized.
+		if (adminUtils.isAdminUser(target, c.env.admin) && Number(authorized) === 0) {
+			throw new BizError('Root administrator Telegram push cannot be revoked', 403);
 		}
 		await orm(c).insert(userTelegram).values({
 			userId: Number(userId),
@@ -69,12 +99,14 @@ const userTelegramService = {
 
 	async createBinding(c) {
 		const userId = userContext.getUserId(c);
-		let config = await this.get(c, userId);
-		if (!config.authorized && await accessControlService.isRootAdmin(c)) {
-			await orm(c).insert(userTelegram).values({ userId, authorized: 1, updatedAt: new Date().toISOString() })
-				.onConflictDoUpdate({ target: userTelegram.userId, set: { authorized: 1, updatedAt: new Date().toISOString() } }).run();
-			config = await this.get(c, userId);
+		const isRoot = await accessControlService.isRootAdmin(c);
+
+		// Always persist root authorization so webhook verification can see it without JWT context.
+		if (isRoot) {
+			await this.ensureRootAuthorization(c, userId);
 		}
+
+		const config = await this.get(c, userId);
 		if (!config.authorized) {
 			throw new BizError('Telegram push has not been authorized for this user', 403);
 		}
@@ -90,6 +122,9 @@ const userTelegramService = {
 
 	async setPushEnabled(c, enabled) {
 		const userId = userContext.getUserId(c);
+		if (await accessControlService.isRootAdmin(c)) {
+			await this.ensureRootAuthorization(c, userId);
+		}
 		const config = await this.get(c, userId);
 		if (!config.authorized || !config.chatId) {
 			throw new BizError('Bind Telegram before enabling push', 403);
@@ -123,9 +158,14 @@ const userTelegramService = {
 		}
 
 		const owner = await orm(c).select().from(user).where(eq(user.userId, binding.userId)).get();
+		if (!owner || owner.isDel !== isDel.NORMAL || owner.status !== userConst.status.NORMAL) {
+			return { ok: false, reason: 'unauthorized' };
+		}
+
 		const configRow = await orm(c).select().from(userTelegram).where(eq(userTelegram.userId, binding.userId)).get();
-		const authorized = Number(configRow?.authorized) === 1;
-		if (!owner || owner.isDel !== isDel.NORMAL || owner.status !== userConst.status.NORMAL || !authorized) {
+		const isRoot = adminUtils.isAdminUser(owner, c.env.admin);
+		const authorized = Number(configRow?.authorized) === 1 || isRoot;
+		if (!authorized) {
 			return { ok: false, reason: 'unauthorized' };
 		}
 
@@ -139,6 +179,7 @@ const userTelegramService = {
 		}).onConflictDoUpdate({
 			target: userTelegram.userId,
 			set: {
+				authorized: 1,
 				chatId: String(chat.id),
 				chatUsername: chat.username || '',
 				boundAt: new Date().toISOString(),
@@ -158,4 +199,3 @@ const userTelegramService = {
 };
 
 export default userTelegramService;
-

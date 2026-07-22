@@ -149,4 +149,45 @@ describe('per-user Telegram push', () => {
 		expect(bound.chatId).toBe('777');
 	});
 
+
+
+	it('root admin binds without explicit authorization', async () => {
+		const initialized = await request(/init/);
+		const rootLogin = await login('admin@example.com', initialized.admin.temporaryPassword);
+		const rootToken = rootLogin.data.token;
+
+		await request('/setting/set', {
+			method: 'PUT',
+			headers: { Authorization: rootToken, 'content-type': 'application/json' },
+			body: JSON.stringify({ tgBotToken: 'test-token', tgWebhookSecret: 'root-secret', resendTokens: {} })
+		});
+
+		// No /user/setTelegramAuthorization call for root.
+		const binding = await request('/my/telegram/binding', {
+			method: 'POST', headers: { Authorization: rootToken }
+		});
+		expect(binding.code).toBe(200);
+
+		const root = await env.db.prepare('SELECT user_id AS userId FROM user WHERE email = ?').bind('admin@example.com').first();
+		const authRow = await env.db.prepare('SELECT authorized FROM user_telegram WHERE user_id = ?').bind(root.userId).first();
+		expect(authRow.authorized).toBe(1);
+
+		const webhook = await request('/telegram/webhook', {
+			method: 'POST',
+			headers: {
+				'content-type': 'application/json',
+				'X-Telegram-Bot-Api-Secret-Token': 'root-secret'
+			},
+			body: JSON.stringify({
+				message: {
+					text: /start bind_,
+					chat: { id: 999001, type: 'private', username: 'root_admin' }
+				}
+			})
+		});
+		expect(webhook.ok).toBe(true);
+		const bound = await env.db.prepare('SELECT chat_id AS chatId, authorized FROM user_telegram WHERE user_id = ?').bind(root.userId).first();
+		expect(bound).toMatchObject({ chatId: '999001', authorized: 1 });
+	});
+
 });
