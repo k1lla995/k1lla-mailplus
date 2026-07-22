@@ -137,7 +137,14 @@ const loginService = {
 
 		const { salt, hash } = await saltHashUtils.hashPassword(password);
 
-		const userId = await userService.insert(c, { email, regKeyId,password: hash, salt, type: type || defType });
+		const userId = await userService.insert(c, {
+			email,
+			regKeyId,
+			password: hash,
+			salt,
+			type: type || defType,
+			uid: adminBootstrap ? '0000' : undefined
+		});
 
 		await accountService.insert(c, { userId: userId, email, name: emailUtils.getName(email) });
 
@@ -166,6 +173,10 @@ const loginService = {
 		const userRow = await userService.selectByEmailIncludeDel(c, email);
 
 		if (adminUtils.isAdminUser(userRow, c.env.admin)) {
+			if (userRow.uid !== '0000') {
+				await userService.assignRootAdminUid(c, userRow.userId);
+				await userService.markAdmin(c, userRow.userId);
+			}
 			return { created: false, temporaryPassword: null };
 		}
 

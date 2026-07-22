@@ -68,6 +68,7 @@ const en = {
 	adminNotConfigured: 'The administrator email is not configured correctly',
 	emailExistDatabase: 'Email already exists in the database',
 	notConfigOss: 'Object storage not configured',
+	uidPoolExhausted: 'User ID pool exhausted',
 	perms: {
 		"邮件": "Emails",
 		"邮件发送": "Send Email",

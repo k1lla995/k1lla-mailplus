@@ -40,6 +40,7 @@ const userService = {
 
 		const user = {};
 		user.userId = userRow.userId;
+		user.uid = userRow.uid;
 		user.sendCount = userRow.sendCount;
 		user.email = userRow.email;
 		user.account = account;
@@ -72,19 +73,22 @@ const userService = {
 
 	async recoverAdmin(c, userId, password) {
 		const { salt, hash } = await cryptoUtils.hashPassword(password);
+		await userService.assignRootAdminUid(c, userId);
 		await orm(c).update(user).set({
 			password: hash,
 			salt,
 			type: 0,
 			status: userConst.status.NORMAL,
-			isDel: isDel.NORMAL
+			isDel: isDel.NORMAL,
+			uid: '0000'
 		}).where(eq(user.userId, userId)).run();
 		await accountService.restoreByUserId(c, userId);
 		await c.env.kv.delete(KvConst.AUTH_INFO + userId);
 	},
 
 	async markAdmin(c, userId) {
-		await orm(c).update(user).set({ type: 0 }).where(eq(user.userId, userId)).run();
+		await userService.assignRootAdminUid(c, userId);
+		await orm(c).update(user).set({ type: 0, uid: '0000' }).where(eq(user.userId, userId)).run();
 		await c.env.kv.delete(KvConst.AUTH_INFO + userId);
 	},
 
@@ -96,9 +100,70 @@ const userService = {
 			.get();
 	},
 
+	async generateUid(c, options = {}) {
+		if (options.fixed) {
+			return options.fixed;
+		}
+
+		const rows = await orm(c).select({ uid: user.uid }).from(user).all();
+		const used = new Set(rows.map(row => row.uid).filter(Boolean));
+
+		for (let i = 0; i < 200; i++) {
+			const uid = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+			if (uid === '0000' || used.has(uid)) {
+				continue;
+			}
+			return uid;
+		}
+
+		for (let n = 1; n < 10000; n++) {
+			const uid = String(n).padStart(4, '0');
+			if (!used.has(uid)) {
+				return uid;
+			}
+		}
+
+		throw new BizError(t('uidPoolExhausted'));
+	},
+
+	async assignRootAdminUid(c, userId = null) {
+		const holders = await orm(c).select().from(user).where(eq(user.uid, '0000')).all();
+		for (const holder of holders) {
+			if (userId != null && holder.userId === userId) {
+				continue;
+			}
+			const newUid = await userService.generateUid(c);
+			await orm(c).update(user).set({ uid: newUid }).where(eq(user.userId, holder.userId)).run();
+		}
+	},
+
 	async insert(c, params) {
-		const { userId } = await orm(c).insert(user).values({ ...params }).returning().get();
-		return userId;
+		const values = { ...params };
+		// Fixed root uid must be exclusive before insert
+		if (values.uid === '0000') {
+			await userService.assignRootAdminUid(c, null);
+		}
+
+		let lastError = null;
+		for (let attempt = 0; attempt < 5; attempt++) {
+			const payload = { ...values };
+			if (!payload.uid) {
+				payload.uid = await userService.generateUid(c);
+			}
+			try {
+				const { userId } = await orm(c).insert(user).values(payload).returning().get();
+				return userId;
+			} catch (e) {
+				lastError = e;
+				const msg = String(e?.message || e || '');
+				// Retry only on unique uid collisions under concurrent registration
+				if (!/UNIQUE|unique|uid/i.test(msg) || payload.uid === '0000') {
+					throw e;
+				}
+				values.uid = undefined;
+			}
+		}
+		throw lastError || new BizError(t('uidPoolExhausted'));
 	},
 
 	selectByEmailIncludeDel(c, email) {
@@ -154,7 +219,13 @@ const userService = {
 
 
 		if (email) {
-			conditions.push(sql`${user.email} COLLATE NOCASE LIKE ${'%'+ email + '%'}`);
+			const keyword = String(email).trim();
+			if (/^\d{1,4}$/.test(keyword)) {
+				const paddedUid = keyword.padStart(4, '0');
+				conditions.push(sql`(${user.email} COLLATE NOCASE LIKE ${'%'+ keyword + '%'} OR ${user.uid} = ${paddedUid} OR ${user.uid} LIKE ${'%'+ keyword + '%'})`);
+			} else {
+				conditions.push(sql`(${user.email} COLLATE NOCASE LIKE ${'%'+ keyword + '%'} OR ${user.uid} LIKE ${'%'+ keyword + '%'})`);
+			}
 		}
 
 

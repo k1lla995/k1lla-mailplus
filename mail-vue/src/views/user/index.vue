@@ -42,6 +42,11 @@
             :cell-class-name="cellClassName"
         >
           <el-table-column :width="expandWidth" type="selection" :selectable="row => row.type !== 0" />
+          <el-table-column :label="$t('userUid')" width="90" prop="uid">
+            <template #default="props">
+              <span class="uid-cell">{{ props.row.uid || '-' }}</span>
+            </template>
+          </el-table-column>
           <el-table-column show-overflow-tooltip :tooltip-formatter="tableRowFormatter" :label="$t('tabEmailAddress')"
                            :min-width="emailWidth">
             <template #default="props">
@@ -258,6 +263,10 @@
           </el-tag>
           <el-tag disable-transitions v-else-if="userDetails.status === 1" type="danger">{{ $t('banned') }}
           </el-tag>
+        </div>
+        <div><span class="details-item-title">{{ $t('userUid') }}:</span>{{
+            userDetails.uid || '-'
+          }}
         </div>
         <div><span class="details-item-title">{{ $t('registrationIp') }}:</span>{{
             userDetails.createIp || $t('unknown')
@@ -1067,6 +1076,11 @@ function adjustWidth() {
 
 .el-table-filter__content {
   min-width: 0;
+}
+
+.uid-cell {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
 }
 </style>
 <style lang="scss" scoped>

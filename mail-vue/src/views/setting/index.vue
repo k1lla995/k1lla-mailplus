@@ -20,6 +20,16 @@
         </div>
       </div>
       <div class="item">
+        <div>{{$t('userUid')}}</div>
+        <div>
+          <span
+            class="uid-value"
+            :title="$t('copyUid')"
+            @click="copyUid"
+          >{{ userStore.user.uid || '-' }}</span>
+        </div>
+      </div>
+      <div class="item">
         <div>{{$t('emailAccount')}}</div>
         <div>{{ userStore.user.email }}</div>
       </div>
@@ -239,6 +249,29 @@ const form = reactive({
   newPwd: '',
 })
 
+
+async function copyUid() {
+  const uid = userStore.user?.uid
+  if (!uid) {
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(String(uid))
+    ElMessage({
+      message: t('copySuccessMsg'),
+      type: 'success',
+      plain: true,
+    })
+  } catch (err) {
+    console.error(`${t('copyFailMsg')}:`, err)
+    ElMessage({
+      message: t('copyFailMsg'),
+      type: 'error',
+      plain: true,
+    })
+  }
+}
+
 const deleteConfirm = () => {
   ElMessageBox.confirm(t('delAccountConfirm'), {
     confirmButtonText: t('confirm'),
@@ -332,9 +365,22 @@ function submitPwd() {
 
     .item {
       display: grid;
-      grid-template-columns: 50px 1fr;
+      grid-template-columns: 70px 1fr;
       gap: 140px;
       position: relative;
+
+      .uid-value {
+        cursor: pointer;
+        color: var(--el-color-primary);
+        user-select: none;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.5px;
+
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+
       .user-name {
         display: grid;
         grid-template-columns: auto 1fr;

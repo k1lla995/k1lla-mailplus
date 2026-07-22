@@ -48,9 +48,104 @@ const dbInit = {
 		await this.v3_9DB(c);
 		await this.v4_0DB(c);
 		await this.v4_1DB(c);
+		await this.v4_2DB(c);
 		await settingService.refresh(c);
 	},
 
+
+
+	async v4_2DB(c) {
+		try {
+			await c.env.db.prepare(`ALTER TABLE user ADD COLUMN uid TEXT;`).run();
+		} catch (e) {
+			console.warn(`Skip user uid column migration: ${e.message}`);
+		}
+
+		try {
+			await c.env.db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_uid ON user(uid);`).run();
+		} catch (e) {
+			console.warn(`Skip user uid index migration: ${e.message}`);
+		}
+
+		const { results: users } = await c.env.db.prepare(`SELECT user_id, email, type, uid FROM user`).all();
+		if (!users || users.length === 0) {
+			return;
+		}
+
+		const adminEmail = String(c.env.admin || '').trim().toLowerCase();
+		const used = new Set();
+		const assignments = new Map();
+
+		for (const row of users) {
+			if (row.uid && /^\d{4}$/.test(String(row.uid)) && !used.has(String(row.uid))) {
+				assignments.set(row.user_id, String(row.uid));
+				used.add(String(row.uid));
+			}
+		}
+
+		const pickUid = () => {
+			for (let i = 0; i < 300; i++) {
+				const uid = String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+				if (uid === '0000' || used.has(uid)) {
+					continue;
+				}
+				used.add(uid);
+				return uid;
+			}
+			for (let n = 1; n < 10000; n++) {
+				const uid = String(n).padStart(4, '0');
+				if (!used.has(uid)) {
+					used.add(uid);
+					return uid;
+				}
+			}
+			throw new Error('UID pool exhausted');
+		};
+
+		for (const row of users) {
+			const isRootAdmin = Number(row.type) === 0 && String(row.email || '').trim().toLowerCase() === adminEmail;
+			if (!isRootAdmin) {
+				continue;
+			}
+			const prev = assignments.get(row.user_id);
+			if (prev && prev !== '0000') {
+				used.delete(prev);
+			}
+			for (const [userId, uid] of [...assignments.entries()]) {
+				if (uid === '0000' && userId !== row.user_id) {
+					assignments.delete(userId);
+					used.delete('0000');
+				}
+			}
+			assignments.set(row.user_id, '0000');
+			used.add('0000');
+		}
+
+		for (const row of users) {
+			if (!assignments.has(row.user_id)) {
+				assignments.set(row.user_id, pickUid());
+			}
+		}
+
+		const statements = [];
+		// First clear uids that need reassignment to avoid unique index conflicts
+		for (const row of users) {
+			const uid = assignments.get(row.user_id);
+			if (String(row.uid || '') !== uid && row.uid) {
+				statements.push(c.env.db.prepare(`UPDATE user SET uid = NULL WHERE user_id = ?`).bind(row.user_id));
+			}
+		}
+		for (const row of users) {
+			const uid = assignments.get(row.user_id);
+			if (String(row.uid || '') !== uid) {
+				statements.push(c.env.db.prepare(`UPDATE user SET uid = ? WHERE user_id = ?`).bind(uid, row.user_id));
+			}
+		}
+
+		if (statements.length > 0) {
+			await c.env.db.batch(statements);
+		}
+	},
 
 	async v4_1DB(c) {
 		try {
