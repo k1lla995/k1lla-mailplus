@@ -20,6 +20,7 @@ export const setting = sqliteTable('setting', {
 	background: text('background'),
 	pwaIcon: text('pwa_icon').default('').notNull(),
 	tgBotToken: text('tg_bot_token').default('').notNull(),
+	tgBotUsername: text('tg_bot_username').default('').notNull(),
 	tgChatId: text('tg_chat_id').default('').notNull(),
 	tgBotStatus: integer('tg_bot_status').default(1).notNull(),
 	forwardEmail: text('forward_email').default('').notNull(),

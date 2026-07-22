@@ -585,8 +585,9 @@
           </div>
         </template>
         <div class="forward-set-body">
-          <el-input :placeholder="setting.tgBotToken || $t('tgBotToken')" v-model="tgBotToken"></el-input>
-          <el-alert type="info" :closable="false" title="先保存 Token，再点「Configure binding webhook」。用户在「个人设置」绑定机器人私聊并打开推送开关。" />
+                    <el-input :placeholder="setting.tgBotToken || $t('tgBotToken')" v-model="tgBotToken"></el-input>
+          <el-input placeholder="机器人用户名或链接，如 @my_bot 或 https://t.me/my_bot" v-model="tgBotUsername"></el-input>
+          <el-alert type="info" :closable="false" title="先保存 Token 与机器人链接，再点 Configure binding webhook。配置 webhook 时会自动识别机器人用户名。用户在个人设置点击链接即可跳转绑定。" />
           <el-input tag-type="warning" :placeholder="$t('customDomainDesc')" v-model="customDomain" ></el-input>
           <div class="tg-msg-label">
             <span>{{t('from')}}</span>
@@ -995,6 +996,7 @@ const tgChatId = ref([])
 const customDomain = ref('')
 const tgBotStatus = ref(0)
 const tgBotToken = ref('')
+const tgBotUsername = ref('')
 const webhookLoading = ref(false)
 const forwardEmail = ref([])
 const forwardStatus = ref(0)
@@ -1130,6 +1132,7 @@ function closedSetBackground() {
 function openTgSetting() {
   tgBotStatus.value = setting.value.tgBotStatus
   tgBotToken.value = ''
+  tgBotUsername.value = setting.value.tgBotUsername || ''
   customDomain.value = setting.value.customDomain
   tgMsgFrom.value = setting.value.tgMsgFrom
   tgMsgText.value = setting.value.tgMsgText
@@ -1273,7 +1276,8 @@ function tgBotSave() {
     customDomain: customDomain.value,
     tgMsgFrom: tgMsgFrom.value,
     tgMsgText: tgMsgText.value,
-    tgMsgTo: tgMsgTo.value
+    tgMsgTo: tgMsgTo.value,
+    tgBotUsername: tgBotUsername.value
   }
   if (tgBotToken.value) form.tgBotToken = tgBotToken.value
   editSetting(form)
@@ -1477,10 +1481,15 @@ function setupTelegramWebhook() {
   webhookLoading.value = true
   configureTelegramWebhook().then((data) => {
     const err = data?.webhookInfo?.lastErrorMessage
+    if (data?.botUsername) {
+      tgBotUsername.value = data.botUsername
+      if (setting.value) setting.value.tgBotUsername = data.botUsername
+    }
+    const botPart = data?.botLink ? ` Bot: ${data.botLink}` : ''
     ElMessage({
       message: err
-        ? `Webhook configured: ${data.webhookUrl} (Telegram last error: ${err})`
-        : `Webhook configured: ${data.webhookUrl}. Re-bind from Personal Settings if needed.`,
+        ? `Webhook configured: ${data.webhookUrl}${botPart} (Telegram last error: ${err})`
+        : `Webhook configured: ${data.webhookUrl}${botPart}`,
       type: err ? 'warning' : 'success',
       plain: true
     })

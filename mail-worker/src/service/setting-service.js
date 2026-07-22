@@ -155,6 +155,17 @@ const settingService = {
 			if (!resendTokens[domain]) delete resendTokens[domain];
 		});
 
+		if ('tgBotUsername' in params) {
+			let value = typeof params.tgBotUsername === 'string' ? params.tgBotUsername.trim() : '';
+			const fromUrl = value.match(/(?:https?:\/\/)?(?:t\.me|telegram\.me)\/([A-Za-z0-9_]+)/i);
+			if (fromUrl) value = fromUrl[1];
+			value = value.replace(/^@/, '');
+			if (value && !/^[A-Za-z0-9_]{5,32}$/.test(value)) {
+				throw new BizError('Invalid Telegram bot username or link');
+			}
+			params.tgBotUsername = value;
+		}
+
 		if (Array.isArray(params.emailPrefixFilter)) {
 			params.emailPrefixFilter = params.emailPrefixFilter + '';
 		}

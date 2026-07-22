@@ -47,7 +47,17 @@ const dbInit = {
 		await this.v3_8DB(c);
 		await this.v3_9DB(c);
 		await this.v4_0DB(c);
+		await this.v4_1DB(c);
 		await settingService.refresh(c);
+	},
+
+
+	async v4_1DB(c) {
+		try {
+			await c.env.db.prepare(`ALTER TABLE setting ADD COLUMN tg_bot_username TEXT NOT NULL DEFAULT '';`).run();
+		} catch (e) {
+			console.warn(`Skip Telegram bot username migration: ${e.message}`);
+		}
 	},
 
 	async v4_0DB(c) {

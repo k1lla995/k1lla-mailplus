@@ -11,6 +11,24 @@ import adminUtils from '../utils/admin-utils';
 
 const BINDING_TTL_SECONDS = 10 * 60;
 
+function normalizeTgBotUsername(input) {
+	if (!input || typeof input !== 'string') return '';
+	let value = input.trim();
+	if (!value) return '';
+	const fromUrl = value.match(/(?:https?:\/\/)?(?:t\.me|telegram\.me)\/([A-Za-z0-9_]+)/i);
+	if (fromUrl) value = fromUrl[1];
+	value = value.replace(/^@/, '');
+	if (!/^[A-Za-z0-9_]{5,32}$/.test(value)) return '';
+	return value;
+}
+
+function buildBotBindLink(username, code) {
+	const bot = normalizeTgBotUsername(username);
+	if (!bot || !code) return '';
+	return `https://t.me/${bot}?start=bind_${code}`;
+}
+
+
 function randomCode() {
 	const bytes = crypto.getRandomValues(new Uint8Array(18));
 	return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
@@ -29,7 +47,13 @@ function expiresAt() {
 const userTelegramService = {
 	async get(c, userId = userContext.getUserId(c)) {
 		const row = await orm(c).select().from(userTelegram).where(eq(userTelegram.userId, userId)).get();
-		if (row) return row;
+		const settings = await settingService.query(c);
+		const botUsername = normalizeTgBotUsername(settings.tgBotUsername);
+		const botLink = botUsername ? `https://t.me/${botUsername}` : '';
+
+		if (row) {
+			return { ...row, botUsername, botLink };
+		}
 
 		// Root admin is authorized by default even before a user_telegram row exists.
 		const ctxUser = c.get?.('user');
@@ -47,7 +71,9 @@ const userTelegramService = {
 			pushEnabled: 0,
 			chatId: '',
 			chatUsername: '',
-			boundAt: null
+			boundAt: null,
+			botUsername,
+			botLink
 		};
 	},
 
@@ -117,7 +143,13 @@ const userTelegramService = {
 		const codeHash = await hashCode(code);
 		await orm(c).delete(telegramBinding).where(eq(telegramBinding.userId, userId)).run();
 		await orm(c).insert(telegramBinding).values({ codeHash, userId, expiresAt: expiresAt() }).run();
-		return { code, expiresIn: BINDING_TTL_SECONDS };
+		const botUsername = normalizeTgBotUsername((await settingService.query(c)).tgBotUsername);
+		return {
+			code,
+			expiresIn: BINDING_TTL_SECONDS,
+			botUsername,
+			botLink: buildBotBindLink(botUsername, code)
+		};
 	},
 
 	async setPushEnabled(c, enabled) {

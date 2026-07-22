@@ -64,6 +64,7 @@ describe('per-user Telegram push', () => {
 		});
 		expect(binding.code).toBe(200);
 		expect(binding.data.code).toMatch(/^[a-f0-9]{36}$/);
+		// botLink empty until admin sets tgBotUsername
 		await request('/setting/set', {
 			method: 'PUT',
 			headers: { Authorization: rootToken, 'content-type': 'application/json' },
@@ -129,6 +130,8 @@ describe('per-user Telegram push', () => {
 			method: 'POST', headers: { Authorization: rootToken }
 		});
 		expect(binding.code).toBe(200);
+		expect(binding.data.botUsername).toBe('mail_push_bot');
+		expect(binding.data.botLink).toBe(`https://t.me/mail_push_bot?start=bind_${binding.data.code}`);
 
 		const webhook = await request('/telegram/webhook', {
 			method: 'POST',
@@ -159,7 +162,7 @@ describe('per-user Telegram push', () => {
 		await request('/setting/set', {
 			method: 'PUT',
 			headers: { Authorization: rootToken, 'content-type': 'application/json' },
-			body: JSON.stringify({ tgBotToken: 'test-token', tgWebhookSecret: 'root-secret', resendTokens: {} })
+			body: JSON.stringify({ tgBotToken: 'test-token', tgBotUsername: 'mail_push_bot', tgWebhookSecret: 'root-secret', resendTokens: {} })
 		});
 
 		// No /user/setTelegramAuthorization call for root.

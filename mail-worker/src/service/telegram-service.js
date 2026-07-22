@@ -13,6 +13,24 @@ import { eq } from 'drizzle-orm';
 
 const BIND_CODE_RE = /^\/start(?:@\w+)?(?:\s+bind_?([a-f0-9]{36}))?\s*$/i;
 
+function normalizeTgBotUsername(input) {
+	if (!input || typeof input !== 'string') return '';
+	let value = input.trim();
+	if (!value) return '';
+	const fromUrl = value.match(/(?:https?:\/\/)?(?:t\.me|telegram\.me)\/([A-Za-z0-9_]+)/i);
+	if (fromUrl) value = fromUrl[1];
+	value = value.replace(/^@/, '');
+	if (!/^[A-Za-z0-9_]{5,32}$/.test(value)) return '';
+	return value;
+}
+
+function buildBotBindLink(username, code) {
+	const bot = normalizeTgBotUsername(username);
+	if (!bot || !code) return '';
+	return `https://t.me/${bot}?start=bind_${code}`;
+}
+
+
 async function telegramApi(token, method, body = {}) {
 	const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
 		method: 'POST',
@@ -108,7 +126,18 @@ const telegramService = {
 			throw new BizError(`Telegram webhook setup failed: ${error.message}`);
 		}
 
-		await orm(c).update(setting).set({ tgWebhookSecret: secret }).run();
+		let botUsername = normalizeTgBotUsername(settings.tgBotUsername);
+		try {
+			const me = await telegramApi(settings.tgBotToken, 'getMe', {});
+			const fromToken = normalizeTgBotUsername(me?.username || '');
+			if (fromToken) botUsername = fromToken;
+		} catch (error) {
+			console.warn('getMe failed:', error.message);
+		}
+
+		const patch = { tgWebhookSecret: secret };
+		if (botUsername) patch.tgBotUsername = botUsername;
+		await orm(c).update(setting).set(patch).run();
 		await settingService.refresh(c);
 
 		let webhookInfo = null;
@@ -121,6 +150,8 @@ const telegramService = {
 		return {
 			webhookUrl,
 			hasSecret: true,
+			botUsername,
+			botLink: botUsername ? `https://t.me/${botUsername}` : '',
 			webhookInfo: webhookInfo ? {
 				url: webhookInfo.url,
 				pendingUpdateCount: webhookInfo.pending_update_count,
