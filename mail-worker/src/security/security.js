@@ -11,7 +11,6 @@ import adminUtils from '../utils/admin-utils';
 
 const exclude = [
 	'/login',
-	'/register',
 	'/oss',
 	'/setting/websiteConfig',
 	'/setting/pwaManifest',
@@ -98,6 +97,9 @@ const premKey = {
 app.use('*', async (c, next) => {
 
 	const path = c.req.path;
+	if (path === '/register') {
+		return c.notFound();
+	}
 
 	const index = exclude.findIndex(item => {
 		return path.startsWith(item);

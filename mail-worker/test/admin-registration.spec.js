@@ -14,14 +14,6 @@ async function initializeDatabase() {
 	return response.json();
 }
 
-async function register(email, password = 'attacker-password') {
-	return jsonRequest('/register', {
-		method: 'POST',
-		headers: { 'content-type': 'application/json' },
-		body: JSON.stringify({ email, password })
-	});
-}
-
 async function login(password) {
 	return jsonRequest('/login', {
 		method: 'POST',
@@ -37,17 +29,18 @@ async function listUsers(token) {
 }
 
 describe('administrator account bootstrap', () => {
-	it('reserves the configured administrator email from public registration', async () => {
+	it('does not expose a public registration route', async () => {
 		const initialized = await initializeDatabase();
 		expect(initialized.message).toBe('success');
 		expect(initialized.admin.temporaryPassword).toBeTruthy();
 
-		const exactMatch = await register('admin@example.com');
-		const caseVariant = await register('Admin@Example.com');
+		const response = await SELF.fetch(`${BASE_URL}/register`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ email: 'Admin@Example.com', password: 'attacker-password' })
+		});
 
-		expect(exactMatch.code).toBe(403);
-		expect(caseVariant.code).toBe(403);
-		expect(exactMatch.message).toContain('管理员邮箱');
+		expect(response.status).toBe(404);
 
 		const { total } = await env.db.prepare(
 			'SELECT COUNT(*) AS total FROM user WHERE email = ? COLLATE NOCASE'

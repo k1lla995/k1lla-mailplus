@@ -1,6 +1,5 @@
 import BizError from '../error/biz-error';
 import userService from './user-service';
-import emailUtils from '../utils/email-utils';
 import { isDel, settingConst, userConst } from '../const/entity-const';
 import JwtUtils from '../utils/jwt-utils';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,155 +12,12 @@ import settingService from './setting-service';
 import saltHashUtils from '../utils/crypto-utils';
 import cryptoUtils from '../utils/crypto-utils';
 import turnstileService from './turnstile-service';
-import roleService from './role-service';
-import regKeyService from './reg-key-service';
 import dayjs from 'dayjs';
-import { toUtc } from '../utils/date-uitil';
 import { t } from '../i18n/i18n.js';
 import verifyRecordService from './verify-record-service';
 import adminUtils from '../utils/admin-utils';
 
 const loginService = {
-
-	async register(c, params, options = {}) {
-
-		const { email, password, token, code } = params;
-		const { adminBootstrap = false } = options;
-
-		let { regKey, register, registerVerify, regVerifyCount, minEmailPrefix, emailPrefixFilter } = await settingService.query(c)
-		emailPrefixFilter = Array.isArray(emailPrefixFilter)
-			? emailPrefixFilter
-			: String(emailPrefixFilter || '').split(',').filter(Boolean);
-
-		if (adminBootstrap) {
-			registerVerify = settingConst.registerVerify.CLOSE;
-			register = settingConst.register.OPEN;
-		}
-
-		if (register === settingConst.register.CLOSE) {
-			throw new BizError(t('regDisabled'));
-		}
-
-		if (!verifyUtils.isEmail(email)) {
-			throw new BizError(t('notEmail'));
-		}
-
-		if (adminUtils.isAdminEmail(email, c.env.admin) && !adminBootstrap) {
-			throw new BizError(t('adminEmailReserved'), 403);
-		}
-
-		if (emailUtils.getName(email).length < minEmailPrefix) {
-			throw new BizError(t('minEmailPrefix', { msg: minEmailPrefix } ));
-		}
-
-		if (emailPrefixFilter.some(content => emailUtils.getName(email).includes(content)))  {
-			throw new BizError(t('banEmailPrefix'));
-		}
-
-		if (emailUtils.getName(email).length > 64) {
-			throw new BizError(t('emailLengthLimit'));
-		}
-
-		if (password.length > 30) {
-			throw new BizError(t('pwdLengthLimit'));
-		}
-
-		if (password.length < 6) {
-			throw new BizError(t('pwdMinLength'));
-		}
-
-		if (!c.env.domain.includes(emailUtils.getDomain(email))) {
-			throw new BizError(t('notEmailDomain'));
-		}
-
-		let type = null;
-		let regKeyId = 0
-
-		if (!adminBootstrap && regKey === settingConst.regKey.OPEN) {
-			const result = await this.handleOpenRegKey(c, regKey, code)
-			type = result?.type
-			regKeyId = result?.regKeyId
-		}
-
-		if (!adminBootstrap && regKey === settingConst.regKey.OPTIONAL) {
-			const result = await this.handleOpenOptional(c, regKey, code)
-			type = result?.type
-			regKeyId = result?.regKeyId
-		}
-
-		const accountRow = await accountService.selectByEmailIncludeDel(c, email);
-
-		if (accountRow && accountRow.isDel === isDel.DELETE) {
-			throw new BizError(t('isDelUser'));
-		}
-
-		if (accountRow) {
-			throw new BizError(t('isRegAccount'));
-		}
-
-		let defType = null
-
-		if (!type) {
-			const roleRow = await roleService.selectDefaultRole(c);
-			defType = roleRow.roleId
-		}
-
-
-		const roleRow = await roleService.selectById(c, type || defType);
-
-		if(!roleService.hasAvailDomainPerm(roleRow.availDomain, email)) {
-
-			if (type) {
-				throw new BizError(t('noDomainPermRegKey'),403)
-			}
-
-			if (defType) {
-				throw new BizError(t('noDomainPermReg'),403)
-			}
-
-		}
-
-		let regVerifyOpen = false
-
-		if (!adminBootstrap && registerVerify === settingConst.registerVerify.OPEN) {
-			regVerifyOpen = true
-			await turnstileService.verify(c,token)
-		}
-
-		if (!adminBootstrap && registerVerify === settingConst.registerVerify.COUNT) {
-			regVerifyOpen = await verifyRecordService.isOpenRegVerify(c, regVerifyCount);
-			if (regVerifyOpen) {
-				await turnstileService.verify(c,token)
-			}
-		}
-
-		const { salt, hash } = await saltHashUtils.hashPassword(password);
-
-		const userId = await userService.insert(c, {
-			email,
-			regKeyId,
-			password: hash,
-			salt,
-			type: type || defType,
-			uid: adminBootstrap ? '0000' : undefined
-		});
-
-		await accountService.insert(c, { userId: userId, email, name: emailUtils.getName(email) });
-
-		await userService.updateUserInfo(c, userId, true);
-
-		if (!adminBootstrap && regKey !== settingConst.regKey.CLOSE && type) {
-			await regKeyService.reduceCount(c, code, 1);
-		}
-
-		if (!adminBootstrap && registerVerify === settingConst.registerVerify.COUNT && !regVerifyOpen) {
-			const row = await verifyRecordService.increaseRegCount(c);
-			return {regVerifyOpen: row.count >= regVerifyCount}
-		}
-
-		return {regVerifyOpen}
-
-	},
 
 	async bootstrapAdmin(c) {
 		const email = adminUtils.normalizeEmail(c.env.admin);
@@ -185,64 +41,25 @@ const loginService = {
 		if (userRow) {
 			await userService.recoverAdmin(c, userRow.userId, password);
 		} else {
-			await this.register(c, { email, password }, { adminBootstrap: true });
-			const createdUser = await userService.selectByEmailIncludeDel(c, email);
-			await userService.markAdmin(c, createdUser.userId);
+			await this.createAdministrator(c, email, password);
 		}
 
 		return { created: true, temporaryPassword: password };
 	},
 
-	async registerVerify() {
+	async createAdministrator(c, email, password) {
+		const { salt, hash } = await saltHashUtils.hashPassword(password);
+		const userId = await userService.insert(c, {
+			email,
+			password: hash,
+			salt,
+			type: 0,
+			uid: '0000'
+		});
 
-	},
-
-	async handleOpenRegKey(c, regKey, code) {
-
-		if (!code) {
-			throw new BizError(t('emptyRegKey'));
-		}
-
-		const regKeyRow = await regKeyService.selectByCode(c, code);
-
-		if (!regKeyRow) {
-			throw new BizError(t('notExistRegKey'));
-		}
-
-		if (regKeyRow.count <= 0) {
-			throw new BizError(t('noRegKeyCount'));
-		}
-
-		const today = toUtc().tz('Asia/Shanghai').startOf('day')
-		const expireTime = toUtc(regKeyRow.expireTime).tz('Asia/Shanghai').startOf('day');
-
-		if (expireTime.isBefore(today)) {
-			throw new BizError(t('regKeyExpire'));
-		}
-
-		return { type: regKeyRow.roleId, regKeyId: regKeyRow.regKeyId };
-	},
-
-	async handleOpenOptional(c, regKey, code) {
-
-		if (!code) {
-			return null
-		}
-
-		const regKeyRow = await regKeyService.selectByCode(c, code);
-
-		if (!regKeyRow) {
-			return null
-		}
-
-		const today = toUtc().tz('Asia/Shanghai').startOf('day')
-		const expireTime = toUtc(regKeyRow.expireTime).tz('Asia/Shanghai').startOf('day');
-
-		if (regKeyRow.count <= 0 || expireTime.isBefore(today)) {
-			return null
-		}
-
-		return { type: regKeyRow.roleId, regKeyId: regKeyRow.regKeyId };
+		await accountService.insert(c, { userId, email, name: email.split('@')[0] });
+		await userService.updateUserInfo(c, userId, true);
+		return userId;
 	},
 
 	async login(c, params, noVerifyPwd = false) {

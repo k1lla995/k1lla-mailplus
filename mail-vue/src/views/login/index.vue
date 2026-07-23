@@ -7,15 +7,13 @@
     <div class="form-wrapper">
       <div class="container">
         <span class="form-title">{{ settingStore.settings.title }}</span>
-        <span class="form-desc" v-if="show === 'login'">{{ $t('loginTitle') }}</span>
-        <span class="form-desc" v-else>{{ $t('regTitle') }}</span>
-        <div v-show="show === 'login'">
+        <span class="form-desc">{{ $t('loginTitle') }}</span>
+        <div>
           <el-input :class="!hideLoginDomain ? 'email-input' : ''" v-model="form.email"
                     type="text" :placeholder="$t('emailAccount')" autocomplete="off">
             <template #append v-if="!hideLoginDomain">
               <div @click.stop="openSelect">
                 <el-select
-                    v-if="show === 'login'"
                     ref="mySelect"
                     v-model="suffix"
                     :placeholder="$t('select')"
@@ -49,59 +47,6 @@
           >{{ $t('loginBtn') }}
           </el-button>
         </div>
-        <div v-show="show !== 'login'">
-          <el-input :class="!hideLoginDomain ? 'email-input' : ''" v-model="registerForm.email" type="text" :placeholder="$t('emailAccount')"
-                    autocomplete="off">
-            <template #append v-if="!hideLoginDomain">
-              <div @click.stop="openSelect">
-                <el-select
-                    v-if="show !== 'login'"
-                    ref="mySelect"
-                    v-model="suffix"
-                    :placeholder="$t('select')"
-                    class="select"
-                >
-                  <el-option
-                      v-for="item in domainList"
-                      :key="item"
-                      :label="item"
-                      :value="item"
-                  />
-                </el-select>
-                <div>
-                  <span>{{ suffix }}</span>
-                  <Icon class="setting-icon" icon="mingcute:down-small-fill" width="20" height="20"/>
-                </div>
-              </div>
-            </template>
-          </el-input>
-          <el-input v-model="registerForm.password" :placeholder="$t('password')" type="password" autocomplete="off"/>
-          <el-input v-model="registerForm.confirmPassword" :placeholder="$t('confirmPwd')" type="password"
-                    autocomplete="off"/>
-          <el-input v-if="settingStore.settings.regKey === 0" v-model="registerForm.code" :placeholder="$t('regKey')"
-                    type="text" autocomplete="off"/>
-          <el-input v-if="settingStore.settings.regKey === 2" v-model="registerForm.code"
-                    :placeholder="$t('regKeyOptional')" type="text" autocomplete="off"/>
-          <div v-show="verifyShow"
-               class="register-turnstile"
-               :data-sitekey="settingStore.settings.siteKey"
-               data-callback="onTurnstileSuccess"
-               data-error-callback="onTurnstileError"
-               data-after-interactive-callback="loadAfter"
-               data-before-interactive-callback="loadBefore"
-          >
-            <span style="font-size: 12px;color: #F56C6C" v-if="botJsError">{{ $t('verifyModuleFailed') }}</span>
-          </div>
-          <el-button class="btn" style="margin: 0" type="primary" @click="submitRegister" :loading="registerLoading"
-          >{{ $t('regBtn') }}
-          </el-button>
-        </div>
-        <template v-if="settingStore.settings.register === 0">
-          <div class="switch" @click="show = 'register'" v-if="show === 'login'">{{ $t('noAccount') }}
-            <span>{{ $t('regSwitch') }}</span></div>
-          <div class="switch" @click="show = 'login'" v-else>{{ $t('hasAccount') }} <span>{{ $t('loginSwitch') }}</span>
-          </div>
-        </template>
       </div>
     </div>
     <a v-show="settingStore.settings.projectLink" class="github" href="https://github.com/k1lla995/k1lla-mailplus">
@@ -114,7 +59,6 @@
 import router from "@/router";
 import {computed, nextTick, reactive, ref} from "vue";
 import {login} from "@/request/login.js";
-import {register} from "@/request/login.js";
 import {websiteConfig} from "@/request/setting.js";
 import {isEmail} from "@/utils/verify-utils.js";
 import {useSettingStore} from "@/store/setting.js";
@@ -134,7 +78,6 @@ const userStore = useUserStore();
 const uiStore = useUiStore();
 const settingStore = useSettingStore();
 const loginLoading = ref(false)
-const show = ref('login')
 
 const form = reactive({
   email: '',
@@ -143,46 +86,13 @@ const form = reactive({
 });
 const mySelect = ref()
 const suffix = ref('')
-const registerForm = reactive({
-  email: '',
-  password: '',
-  confirmPassword: '',
-  code: null
-})
 const domainList = settingStore.domainList;
-const registerLoading = ref(false)
 suffix.value = domainList[0]
-const verifyShow = ref(false)
-let verifyToken = ''
-let turnstileId = null
-let botJsError = ref(false)
-let verifyErrorCount = 0
 const loginVerifyShow = ref(false)
 let loginVerifyToken = ''
 let loginTurnstileId = null
 const loginBotJsError = ref(false)
 let loginVerifyErrorCount = 0
-
-window.onTurnstileSuccess = (token) => {
-  verifyToken = token;
-};
-
-window.onTurnstileError = (e) => {
-  if (verifyErrorCount >= 4) {
-    return
-  }
-  verifyErrorCount++
-  console.warn('人机验加载失败', e)
-  setTimeout(() => {
-    nextTick(() => {
-      if (!turnstileId) {
-        turnstileId = window.turnstile.render('.register-turnstile')
-      } else {
-        window.turnstile.reset(turnstileId);
-      }
-    })
-  }, 1500)
-};
 
 window.onLoginTurnstileSuccess = (token) => {
   loginVerifyToken = token;
@@ -233,10 +143,6 @@ const openSelect = () => {
 
 const getFullEmail = (email) => {
   return hideLoginDomain.value ? email : email + suffix.value
-}
-
-const getEmailName = (email) => {
-  return email.split('@')[0]
 }
 
 function renderLoginTurnstile(reset = false) {
@@ -347,152 +253,6 @@ function refreshWebsiteConfig() {
     console.error(e)
   })
 }
-
-
-function submitRegister() {
-
-  if (!registerForm.email) {
-    ElMessage({
-      message: t('emptyEmailMsg'),
-      type: 'error',
-      plain: true,
-    })
-    return
-  }
-
-  console.log(registerForm.email)
-
-  if (getEmailName(registerForm.email).length < settingStore.settings.minEmailPrefix) {
-    ElMessage({
-      message: t('minEmailPrefix', {msg: settingStore.settings.minEmailPrefix}),
-      type: 'error',
-      plain: true,
-    })
-    return
-  }
-
-  const email = getFullEmail(registerForm.email);
-
-  if (!isEmail(email)) {
-    ElMessage({
-      message: t('notEmailMsg'),
-      type: 'error',
-      plain: true,
-    })
-    return
-  }
-
-  if (!registerForm.password) {
-    ElMessage({
-      message: t('emptyPwdMsg'),
-      type: 'error',
-      plain: true,
-    })
-    return
-  }
-
-  if (registerForm.password.length < 6) {
-    ElMessage({
-      message: t('pwdLengthMsg'),
-      type: 'error',
-      plain: true,
-    })
-    return
-  }
-
-  if (registerForm.password !== registerForm.confirmPassword) {
-
-    ElMessage({
-      message: t('confirmPwdFailMsg'),
-      type: 'error',
-      plain: true,
-    })
-    return
-  }
-
-  if (settingStore.settings.regKey === 0) {
-
-    if (!registerForm.code) {
-
-      ElMessage({
-        message: t('emptyRegKeyMsg'),
-        type: 'error',
-        plain: true,
-      })
-      return
-    }
-
-  }
-
-  if (!verifyToken && (settingStore.settings.registerVerify === 0 || (settingStore.settings.registerVerify === 2 && settingStore.settings.regVerifyOpen))) {
-    if (!verifyShow.value) {
-      verifyShow.value = true
-      nextTick(() => {
-        if (!turnstileId) {
-          try {
-            turnstileId = window.turnstile.render('.register-turnstile')
-          } catch (e) {
-            botJsError.value = true
-            console.log('人机验证js加载失败')
-          }
-        } else {
-          window.turnstile.reset('.register-turnstile')
-        }
-      })
-    } else if (!botJsError.value) {
-      ElMessage({
-        message: t('botVerifyMsg'),
-        type: "error",
-        plain: true
-      })
-    }
-    return;
-  }
-
-  registerLoading.value = true
-
-  const form = {
-    email,
-    password: registerForm.password,
-    token: verifyToken,
-    code: registerForm.code
-  }
-
-  register(form).then(({regVerifyOpen}) => {
-    show.value = 'login'
-    registerForm.email = ''
-    registerForm.password = ''
-    registerForm.confirmPassword = ''
-    registerForm.code = ''
-    registerLoading.value = false
-    verifyToken = ''
-    settingStore.settings.regVerifyOpen = regVerifyOpen
-    verifyShow.value = false
-    ElMessage({
-      message: t('regSuccessMsg'),
-      type: 'success',
-      plain: true,
-    })
-  }).catch(res => {
-
-    registerLoading.value = false
-
-    if (res.code === 400) {
-      verifyToken = ''
-      settingStore.settings.regVerifyOpen = true
-      if (turnstileId) {
-        window.turnstile.reset(turnstileId)
-      } else {
-        nextTick(() => {
-          turnstileId = window.turnstile.render('.register-turnstile')
-        })
-      }
-      verifyShow.value = true
-
-    }
-  });
-}
-
 </script>
 
 
@@ -689,9 +449,6 @@ function submitRegister() {
   margin: 0;
 }
 
-.register-turnstile {
-  margin-bottom: 18px;
-}
 
 .login-turnstile {
   margin-bottom: 18px;

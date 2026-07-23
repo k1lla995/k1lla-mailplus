@@ -11,35 +11,10 @@
             <div class="card-title">{{ $t('websiteSetting') }}</div>
             <div class="card-content">
               <div class="setting-item">
-                <div><span>{{ $t('websiteReg') }}</span></div>
-                <div>
-                  <el-switch @change="change" :before-change="beforeChange" :active-value="0" :inactive-value="1"
-                             v-model="setting.register"/>
-                </div>
-              </div>
-              <div class="setting-item">
                 <div><span>{{ $t('loginDomain') }}</span></div>
                 <div>
                   <el-switch @change="change" :before-change="beforeChange" :active-value="1" :inactive-value="0"
                              v-model="setting.loginDomain"/>
-                </div>
-              </div>
-              <div class="setting-item">
-                <div><span>{{ $t('regKey') }}</span></div>
-                <div>
-                  <el-select
-                      @change="change"
-                      :style="`width: ${ locale === 'en' ?  100 : 80 }px;`"
-                      v-model="setting.regKey"
-                      placeholder="Select"
-                  >
-                    <el-option
-                        v-for="item in regKeyOptions"
-                        :key="item.value"
-                        :label="item.label"
-                        :value="item.value"
-                    />
-                  </el-select>
                 </div>
               </div>
               <div class="setting-item">
@@ -353,25 +328,6 @@
           <div class="settings-card">
             <div class="card-title">{{ $t('turnstileSetting') }}</div>
             <div class="card-content">
-              <div class="setting-item">
-                <div><span>{{ $t('signUpVerification') }}</span></div>
-                <div>
-                  <el-button class="opt-button" size="small" type="primary" @click="openRegVerifyCount">
-                    <Icon icon="fluent:settings-48-regular" width="18" height="18"/>
-                  </el-button>
-                  <el-select
-                      @change="change"
-                      :style="`width: ${ locale === 'en' ? 100 : 80 }px;`"
-                      v-model="setting.registerVerify"
-                      placeholder="Select"
-                      class="bot-verify-select"
-                  >
-                    <el-option key="1" :value="0" :label="$t('enable')"/>
-                    <el-option key="1" :value="1" :label="$t('disable')"/>
-                    <el-option key="1" :value="2" :label="$t('rulesVerify')"/>
-                  </el-select>
-                </div>
-              </div>
               <div class="setting-item">
                 <div><span>{{ $t('loginVerification') }}</span></div>
                 <div>
@@ -696,14 +652,6 @@
                            :show-overflow-tooltip="true"/>
         </el-table>
       </el-dialog>
-      <el-dialog v-model="regVerifyCountShow" :title="$t('rulesVerifyTitle',{count: regVerifyCount})"
-                 @closed="regVerifyCount = setting.regVerifyCount">
-        <form>
-          <el-input-number type="text" v-model="regVerifyCount" :min="1">
-          </el-input-number>
-          <el-button type="primary" :loading="settingLoading" @click="saveRegVerifyCount">{{ $t('save') }}</el-button>
-        </form>
-      </el-dialog>
       <el-dialog v-model="loginVerifyCountShow" :title="$t('rulesVerifyTitle',{count: loginVerifyCount})"
                  @closed="loginVerifyCount = setting.loginVerifyCount">
         <form>
@@ -928,13 +876,11 @@ const backgroundUrl = ref('')
 let backgroundFile = {}
 const showSetBackground = ref(false)
 const pwaIconLoading = ref(false)
-let regVerifyCount = ref(1)
 let addVerifyCount = ref(1)
 let loginVerifyCount = ref(5)
 let backup = '{}'
 const addS3Show = ref(false)
 const addVerifyCountShow = ref(false)
-const regVerifyCountShow = ref(false)
 const loginVerifyCountShow = ref(false)
 const resendTokenForm = reactive({
   domain: '',
@@ -964,12 +910,6 @@ const noticeForm = reactive({
   notice: 0,
   noticeWidth: 0
 })
-
-const regKeyOptions = computed(() => [
-  {label: t('enable'), value: 0},
-  {label: t('disable'), value: 1},
-  {label: t('optional'), value: 2},
-])
 
 const blackListForm = ref({
   blackSubject: [],
@@ -1029,7 +969,6 @@ function getSettings() {
     editTitle.value = setting.value.title
     r2DomainInput.value = setting.value.r2Domain
     addVerifyCount.value = setting.value.addVerifyCount
-    regVerifyCount.value = setting.value.regVerifyCount
     loginVerifyCount.value = setting.value.loginVerifyCount
     resetNoticeForm()
     resetAddS3Form()
@@ -1050,11 +989,6 @@ function openNoticePopup() {
 function openAddVerifyCount() {
   if (settingLoading.value) return
   addVerifyCountShow.value = true
-}
-
-function openRegVerifyCount() {
-	if (settingLoading.value) return
-	regVerifyCountShow.value = true
 }
 
 function openLoginVerifyCount() {
@@ -1098,13 +1032,6 @@ function saveAddVerifyCount() {
     addVerifyCount.value = 1
   }
   editSetting({addVerifyCount: addVerifyCount.value})
-}
-
-function saveRegVerifyCount() {
-  if (!regVerifyCount.value) {
-    regVerifyCount.value = 1
-  }
-	editSetting({regVerifyCount: regVerifyCount.value})
 }
 
 function saveLoginVerifyCount() {
@@ -1667,7 +1594,6 @@ function editSetting(settingForm, refreshStatus = true) {
     thirdEmailShow.value = false
     forwardRulesShow.value = false
 	addVerifyCountShow.value = false
-	regVerifyCountShow.value = false
 	loginVerifyCountShow.value = false
     noticePopupShow.value = false
     addS3Show.value = false

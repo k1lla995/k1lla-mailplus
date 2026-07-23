@@ -114,7 +114,7 @@ describe('per-user Telegram push', () => {
 		await request('/setting/set', {
 			method: 'PUT',
 			headers: { Authorization: rootToken, 'content-type': 'application/json' },
-			body: JSON.stringify({ tgBotToken: 'test-token', tgWebhookSecret: 'keep-secret', resendTokens: {} })
+			body: JSON.stringify({ tgBotToken: 'test-token', tgBotUsername: 'mail_push_bot', tgWebhookSecret: 'keep-secret', resendTokens: {} })
 		});
 
 		// Empty secret must not wipe the configured webhook secret.
@@ -155,7 +155,7 @@ describe('per-user Telegram push', () => {
 
 
 	it('root admin binds without explicit authorization', async () => {
-		const initialized = await request(/init/);
+		const initialized = await request(`/init/${JWT_SECRET}`);
 		const rootLogin = await login('admin@example.com', initialized.admin.temporaryPassword);
 		const rootToken = rootLogin.data.token;
 
@@ -183,7 +183,7 @@ describe('per-user Telegram push', () => {
 			},
 			body: JSON.stringify({
 				message: {
-					text: /start bind_,
+					text: `/start bind_${binding.data.code}`,
 					chat: { id: 999001, type: 'private', username: 'root_admin' }
 				}
 			})

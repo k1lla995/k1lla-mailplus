@@ -271,13 +271,11 @@ const settingService = {
 		const token = await userContext.getToken(c);
 
 		return {
-			register: settingRow.register,
 			title: settingRow.title,
 			manyEmail: settingRow.manyEmail,
 			addEmail: settingRow.addEmail,
 			autoRefresh: settingRow.autoRefresh,
 			addEmailVerify: settingRow.addEmailVerify,
-			registerVerify: settingRow.registerVerify,
 			loginVerify: settingRow.loginVerify,
 			send: settingRow.send,
 			r2Domain: settingRow.r2Domain,
@@ -289,8 +287,6 @@ const settingService = {
 			loginGame: settingRow.loginGame,
 			primaryColor: settingRow.primaryColor,
 			domainList: settingRow.loginDomain === 1 && !token ? [] : settingRow.domainList,
-			regKey: settingRow.regKey,
-			regVerifyOpen: settingRow.regVerifyOpen,
 			addVerifyOpen: settingRow.addVerifyOpen,
 			loginVerifyOpen: settingRow.loginVerifyOpen,
 			noticeTitle: settingRow.noticeTitle,
@@ -302,7 +298,6 @@ const settingService = {
 			noticeOffset: settingRow.noticeOffset,
 			notice: settingRow.notice,
 			loginDomain: settingRow.loginDomain,
-			minEmailPrefix: settingRow.minEmailPrefix,
 			projectLink: settingRow.projectLink
 		};
 	},
