@@ -25,15 +25,20 @@ function animatePortal(target) {
   if (target.matches('.management-menu-popper, .detail-dropdown')) return
   target.dataset.motionEntered = 'true'
   const isDialog = target.matches('.el-dialog, .el-message-box')
+  const isPopper = target.matches('.el-popper')
+  // Popper positions tooltips with transform: translate(...). Do not animate that property,
+  // or its initial position is overwritten until Popper calculates it again.
+  const from = isPopper
+    ? { autoAlpha: 0 }
+    : { autoAlpha: 0, y: isDialog ? 8 : -7, scale: isDialog ? 0.94 : 0.985 }
   const tween = gsap.fromTo(target,
-    { autoAlpha: 0, y: isDialog ? 8 : -7, scale: isDialog ? 0.94 : 0.985 },
+    from,
     {
       autoAlpha: 1,
-      y: 0,
-      scale: 1,
+      ...(!isPopper && { y: 0, scale: 1 }),
       duration: isDialog ? 0.24 : 0.18,
       ease: 'power2.out',
-      clearProps: 'transform,visibility',
+      clearProps: isPopper ? 'opacity,visibility' : 'transform,visibility',
       onComplete: () => portalTweens.delete(tween)
     }
   )
