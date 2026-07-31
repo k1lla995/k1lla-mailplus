@@ -56,14 +56,14 @@ onBeforeUnmount(() => {
   height: 100%;
   z-index: 100;
   transform: translateX(-100%);
-  transition: all 100ms ease;
+  transition: transform var(--ds-duration-fast) var(--ds-ease-standard);
 }
 
 .aside-show {
   -webkit-box-shadow: var(--aside-right-border);
   box-shadow: var(--aside-right-border);
   transform: translateX(0);
-  transition: all 100ms ease;
+  transition: transform var(--ds-duration-fast) var(--ds-ease-standard), box-shadow var(--ds-duration-fast) var(--ds-ease-standard);
   z-index: 101;
   @media (max-width: 1025px) {
     position: fixed;
@@ -77,7 +77,7 @@ onBeforeUnmount(() => {
 
 .el-aside {
   width: auto;
-  transition: all 100ms ease;
+  transition: transform var(--ds-duration-fast) var(--ds-ease-standard), width var(--ds-duration-fast) var(--ds-ease-standard);
 }
 
 .layout {

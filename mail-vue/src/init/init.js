@@ -24,6 +24,23 @@ export async function init() {
 
     i18n.global.locale.value = settingStore.lang
 
+    const applySetting = (setting) => {
+        if (!setting) return;
+        settingStore.settings = setting;
+        settingStore.domainList = setting.domainList;
+        applyPrimaryColor(setting.primaryColor);
+        document.title = setting.title;
+    };
+
+    const loadWebsiteConfig = async () => {
+        try {
+            return await websiteConfig();
+        } catch {
+            // The application shell must remain available when public config is temporarily unavailable.
+            return null;
+        }
+    };
+
     let setting = null;
 
     if (token) {
@@ -32,12 +49,9 @@ export async function init() {
             return null;
         });
 
-        const [s, user] = await Promise.all([websiteConfig(), userPromise]);
+        const [s, user] = await Promise.all([loadWebsiteConfig(), userPromise]);
         setting = s;
-        settingStore.settings = setting;
-        settingStore.domainList = setting.domainList;
-        applyPrimaryColor(setting.primaryColor);
-        document.title = setting.title;
+        applySetting(setting);
 
         if (user) {
             accountStore.currentAccountId = user.account.accountId;
@@ -51,10 +65,7 @@ export async function init() {
         }
 
     } else {
-        setting = await websiteConfig();
-        settingStore.settings = setting;
-        settingStore.domainList = setting.domainList;
-        applyPrimaryColor(setting.primaryColor);
-        document.title = setting.title;
+        setting = await loadWebsiteConfig();
+        applySetting(setting);
     }
 }

@@ -1,5 +1,5 @@
 <template>
-  <div class="email-container">
+  <div ref="motionRoot" class="email-container">
     <div class="header-actions">
       <el-checkbox
           v-model="checkAll"
@@ -11,7 +11,7 @@
       <div class="header-left" :style="'padding-left:' + actionLeft">
 
         <slot name="first"></slot>
-        <Icon class="icon reload" icon="ion:reload" width="18" height="18" @click="refresh"/>
+        <Icon data-motion-control class="icon reload" icon="ion:reload" width="18" height="18" @click="refresh"/>
         <template v-if="recycleMode">
           <Icon v-perm="'email:delete'" class="icon restore" icon="solar:restart-linear" width="20" height="20"
                 v-if="getSelectedMailsIds().length > 0" @click="restoreSelected"/>
@@ -44,7 +44,7 @@
                         :key="keyCount"
         >
           <template #default="{ data: item, index }" >
-            <div :class="'email-row ' + props.type"
+            <div :class="'email-row ' + props.type" data-motion-row
                  :data-checked="item.checked"
                  @click="jumpDetails(item)"
                  v-if="!item.expand"
@@ -146,7 +146,10 @@
                        :showStatus="showStatus"
                        :showUserInfo="showUserInfo"
                        :type="type"/>
-      <div class="empty" v-if="noLoading && emailList.length === 0 && !loading">
+      <div class="empty" v-if="requestFailed && emailList.length === 0 && !loading">
+        <el-empty :image-size="isMobile ? 120 : null" :description="$t('reqFailErrorMsg')"/>
+      </div>
+      <div class="empty" v-else-if="noLoading && emailList.length === 0 && !loading">
         <el-empty :image-size="isMobile ? 120 : null" :description="emptyDescription || $t('noMessagesFound')"/>
       </div>
     </div>
@@ -253,7 +256,7 @@
 <script setup>
 import {Icon} from "@iconify/vue";
 import skeletonBlock from "@/components/email-scroll/skeleton/index.vue"
-import {computed, onActivated, reactive, ref, watch, nextTick, onMounted, onUnmounted } from "vue";
+import {computed, onActivated, onDeactivated, reactive, ref, watch, nextTick, onMounted, onUnmounted } from "vue";
 import {useEmailStore} from "@/store/email.js";
 import {useUiStore} from "@/store/ui.js";
 import {useSettingStore} from "@/store/setting.js";
@@ -263,6 +266,7 @@ import {useI18n} from "vue-i18n";
 import {EmailUnreadEnum} from "@/enums/email-enum.js";
 import { UseVirtualList } from '@vueuse/components'
 import { useScroll } from '@vueuse/core'
+import { Flip, gsap, reduceMotion } from '@/utils/motion.js'
 
 const props = defineProps({
   getEmailList: Function,
@@ -339,6 +343,7 @@ const settingStore = useSettingStore()
 const uiStore = useUiStore();
 const emailStore = useEmailStore();
 const loading = ref(false);
+const requestFailed = ref(false)
 const followLoading = ref(false);
 const noLoading = ref(false);
 const emailList = reactive([])
@@ -347,6 +352,7 @@ const total = ref(0);
 const checkAll = ref(false);
 const isIndeterminate = ref(false);
 const scroll = ref(null)
+const motionRoot = ref(null)
 const firstLoad = ref(true)
 let scrollTop = 0
 const latestEmail = ref(null)
@@ -362,6 +368,7 @@ const dropdownShow = ref(false);
 const rightClickEmail = ref({});
 const checkedEmailCount = ref(0);
 let timer = null
+let listTween
 const position = ref(
     DOMRect.fromRect({
       x: 0,
@@ -392,6 +399,7 @@ defineExpose({
 })
 
 onActivated(() => {
+  startGlobalEffects()
   requestAnimationFrame(() => {
     const index = scrollTop / itemHeight.value
     scrollbarRef.value?.scrollTo(index);
@@ -399,20 +407,41 @@ onActivated(() => {
 })
 
 onMounted(() => {
-  timer = setInterval(() => {
+  startGlobalEffects()
+})
+
+onDeactivated(() => {
+  stopGlobalEffects()
+})
+
+function startGlobalEffects() {
+  if (!timer) {
+    timer = setInterval(() => {
     emailList.forEach(email => {
       email.formatCreateTime = fromNow(email.createTime);
     })
-  }, 1000 * 60);
-})
+    }, 1000 * 60);
+  }
+  window.addEventListener('resize', handleWindowResize)
+  window.addEventListener('wheel', handleWheel)
+}
+
+function stopGlobalEffects() {
+  clearInterval(timer)
+  timer = null
+  window.removeEventListener('resize', handleWindowResize)
+  window.removeEventListener('wheel', handleWheel)
+}
 
 onUnmounted(() => {
-  clearInterval(timer)
+  stopGlobalEffects()
+  listTween?.kill()
+  gsap.killTweensOf(motionRoot.value?.querySelectorAll('[data-motion-row]'))
 })
 
 getEmailList()
 
-window.onresize = () => {
+function handleWindowResize() {
   isMobile.value = innerWidth < 1367
 }
 
@@ -516,11 +545,38 @@ watch(() => emailStore.addStarEmailId, () => {
   })
 })
 
-window.addEventListener('wheel', (event) => {
+function handleWheel() {
   if (dropdownShow.value) {
     dropdownRef.value.handleClose();
   }
-})
+}
+
+function captureListState() {
+  if (reduceMotion() || !motionRoot.value) return null
+  return Flip.getState(motionRoot.value.querySelectorAll('[data-motion-row]'))
+}
+
+function playListFlip(state) {
+  if (!state || reduceMotion()) return
+  listTween?.kill()
+  listTween = Flip.from(state, { duration: 0.28, ease: 'power2.out', absolute: true, nested: true, scale: true, simple: true })
+}
+
+function revealRows() {
+  if (reduceMotion() || !motionRoot.value) return
+  const rows = [...motionRoot.value.querySelectorAll('[data-motion-row]')].filter(row => !row.dataset.motionSeen)
+  if (!rows.length) return
+  rows.forEach(row => row.dataset.motionSeen = 'true')
+  listTween?.kill()
+  listTween = gsap.fromTo(rows.slice(0, 12), { autoAlpha: 0, y: 20 }, {
+    autoAlpha: 1,
+    y: 0,
+    duration: 0.38,
+    stagger: 0.028,
+    ease: 'power2.out',
+    clearProps: 'transform,visibility'
+  })
+}
 
 function openReply(email) {
   uiStore.writerRef.openReply(email)
@@ -765,6 +821,7 @@ function handleDelete() {
 }
 
 function deleteEmail(emailIds) {
+  const flipState = captureListState()
   emailIds.forEach(emailId => {
     emailList.forEach((item, index) => {
       if (emailId === item.emailId) {
@@ -772,12 +829,15 @@ function deleteEmail(emailIds) {
       }
     })
   })
+  nextTick(() => playListFlip(flipState))
   if (emailList.length < queryParam.size && !noLoading.value) {
     getEmailList()
   }
 }
 
 function addItem(email) {
+
+  const flipState = captureListState()
 
   const existIndex = emailList.findIndex(item => item.emailId === email.emailId)
 
@@ -799,6 +859,7 @@ function addItem(email) {
     }
 
     total.value++
+    nextTick(() => playListFlip(flipState))
     return true;
   }
 
@@ -820,6 +881,7 @@ function addItem(email) {
   }
 
   total.value++
+  nextTick(() => playListFlip(flipState))
   return true;
 }
 
@@ -868,6 +930,7 @@ function getEmailList(refresh = false) {
   let emailId = emailList.length > 0 ? emailList.at(-1).emailId : 0;
 
   reqLock = true
+  requestFailed.value = false
 
   if (!refresh) {
 
@@ -912,12 +975,18 @@ function getEmailList(refresh = false) {
 
     handleList(list);
     emailList.push(...list);
+    nextTick(() => revealRows())
     if (refresh) scrollbarRef.value?.setScrollTop(0);
 
     noLoading.value = data.list.length < queryParam.size;
     followLoading.value = data.list.length >= queryParam.size;
 
     total.value = data.total;
+  }).catch(error => {
+    console.error(error)
+    firstLoad.value = false
+    followLoading.value = false
+    requestFailed.value = true
   }).finally(() => {
     loading.value = false
     reqLock = false
@@ -993,6 +1062,7 @@ function loadData() {
     align-items: center;
     height: 100%;
     width: 100%;
+    background: radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--el-color-primary) 10%, transparent), transparent 46%);
   }
 
   .noLoading {
@@ -1043,7 +1113,8 @@ function loadData() {
   cursor: pointer;
   align-items: center;
   position: relative;
-  transition: background 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  overflow: hidden;
+  will-change: transform, opacity;
   height: 48px;
   @media (max-width: 1366px) {
     height: 83px;
@@ -1058,6 +1129,19 @@ function loadData() {
     @media (max-width: 1366px) {
       height: 132px;
     }
+  }
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 18%;
+    bottom: 18%;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--el-color-primary);
+    opacity: 0;
+    transform: scaleY(0.35);
+    transition: opacity 160ms ease, transform 220ms ease;
   }
   .user-info {
     display: flex;
@@ -1074,7 +1158,7 @@ function loadData() {
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
-      transition: all 300ms;
+      transition: color var(--ds-duration-slow) var(--ds-ease-standard), max-width var(--ds-duration-slow) var(--ds-ease-standard);
       line-height: 12px;
       max-width: 300px;
       min-width: 0;
@@ -1322,8 +1406,10 @@ function loadData() {
   }
 
   &:hover {
-    background-color: var(--email-hover-background);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--el-color-primary) 8%, var(--email-hover-background)), var(--email-hover-background));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--el-color-primary) 18%, transparent), var(--header-actions-border);
     z-index: 0;
+    &::before { opacity: 1; transform: scaleY(1); }
   }
 
   /*&[data-checked="true"] {

@@ -11,7 +11,12 @@ import perm from "@/perm/perm.js";
 const pinia = createPinia().use(piniaPersistedState)
 import i18n from "@/i18n/index.js";
 const app = createApp(App).use(pinia)
-await init()
+try {
+    await init()
+} catch (error) {
+    // Do not leave the pre-mount loader on screen if an unrelated initialization step fails.
+    console.error(error)
+}
 app.use(router).use(i18n).directive('perm',perm)
 app.config.devtools = true;
 

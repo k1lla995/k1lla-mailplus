@@ -335,7 +335,7 @@ function refreshWebsiteConfig() {
   @media (max-width: 767px), (max-height: 540px) and (pointer: coarse) {
     border: 1px solid var(--login-border);
     padding: 20px 18px;
-    border-radius: 6px;
+    border-radius: var(--ds-radius-md);
     height: fit-content;
     width: calc(100% - 36px);
     margin-right: 18px;
@@ -359,7 +359,7 @@ function refreshWebsiteConfig() {
   .btn {
     height: 36px;
     width: 100%;
-    border-radius: 6px;
+    border-radius: var(--ds-radius-md);
   }
 
   .form-desc {
@@ -384,12 +384,12 @@ function refreshWebsiteConfig() {
   }
 
   :deep(.el-input__wrapper) {
-    border-radius: 6px;
+    border-radius: var(--ds-radius-md);
     background: var(--el-bg-color);
   }
 
   .email-input :deep(.el-input__wrapper) {
-    border-radius: 6px 0 0 6px;
+    border-radius: var(--ds-radius-md) 0 0 var(--ds-radius-md);
     background: var(--el-bg-color);
   }
 
@@ -474,7 +474,7 @@ function refreshWebsiteConfig() {
 
 #login-box {
   background: var(--el-bg-color-page, #f4f7fb);
-  font: 100% Arial, sans-serif;
+  font: inherit;
   height: 100%;
   margin: 0;
   padding: 0;

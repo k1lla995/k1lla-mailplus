@@ -1,4 +1,5 @@
 <template>
+  <div ref="skeletonRoot" class="skeleton-root">
   <div v-for="item in rows" style="background: var(--el-bg-color)">
     <div :class="'email-row ' + type ">
       <el-checkbox disabled :class=" props.type === 'all-email' ? 'all-email-checkbox' : 'checkbox'"
@@ -73,8 +74,11 @@
       </div>
     </div>
   </div>
+  </div>
 </template>
 <script setup>
+import { onMounted, onUnmounted, ref } from 'vue'
+import { gsap, reduceMotion } from '@/utils/motion.js'
 const props = defineProps({
   rows: {
     type: Number,
@@ -101,6 +105,16 @@ const props = defineProps({
     default: ''
   }
 })
+const skeletonRoot = ref(null)
+let shimmer
+
+onMounted(() => {
+  if (reduceMotion()) return
+  const items = skeletonRoot.value?.querySelectorAll('.el-skeleton__item')
+  shimmer = gsap.to(items, { backgroundPosition: '200% 0', duration: 1.25, ease: 'none', repeat: -1, stagger: 0.025 })
+})
+
+onUnmounted(() => shimmer?.kill())
 import {Icon} from "@iconify/vue";
 </script>
 
@@ -118,6 +132,8 @@ import {Icon} from "@iconify/vue";
 :deep(.el-skeleton__item) {
   position: relative;
   top: 2px;
+  background: linear-gradient(100deg, var(--el-fill-color-light) 24%, color-mix(in srgb, var(--el-fill-color-light) 62%, #fff) 42%, var(--el-fill-color-light) 60%);
+  background-size: 200% 100%;
 }
 
 @media (max-width: 1366px) {

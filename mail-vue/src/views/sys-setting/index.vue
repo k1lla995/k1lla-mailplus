@@ -1694,9 +1694,9 @@ function editSetting(settingForm, refreshStatus = true) {
 
 .settings-card {
   background-color: var(--el-bg-color);
-  border-radius: 8px;
+  border-radius: var(--ds-radius-lg);
   border: 1px solid var(--el-border-color);
-  transition: all 300ms;
+  transition: border-color var(--ds-duration-slow) var(--ds-ease-standard), box-shadow var(--ds-duration-slow) var(--ds-ease-standard);
   overflow: hidden;
 }
 

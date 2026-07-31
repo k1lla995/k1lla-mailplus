@@ -1,10 +1,10 @@
 <template>
-  <div class="header" :class="!hasPerm('email:send') ? 'not-send' : ''">
+  <div ref="headerRoot" class="header" :class="!hasPerm('email:send') ? 'not-send' : ''">
     <div class="header-btn">
       <hanburger @click="changeAside"></hanburger>
       <span class="breadcrumb-item">{{ $t(route.meta.title) }}</span>
     </div>
-    <div v-perm="'email:send'" class="writer-box" @click="openSend">
+    <div v-perm="'email:send'" data-motion-control class="writer-box" @click="openSend">
       <div class="writer">
         <Icon icon="material-symbols:edit-outline-sharp" width="22" height="22"/>
       </div>
@@ -16,8 +16,9 @@
       trigger="click"
       placement="bottom-start"
       popper-class="management-menu-popper"
+      @visible-change="onManagementVisible"
     >
-      <button class="management-trigger" type="button" :class="{ active: isManagementRoute }" :aria-label="$t('managementCenter')">
+      <button data-motion-control class="management-trigger" type="button" :class="{ active: isManagementRoute }" :aria-label="$t('managementCenter')">
         <Icon icon="solar:settings-linear" width="20" height="20" aria-hidden="true" />
         <span>{{ $t('managementCenter') }}</span>
         <Icon class="management-chevron" icon="mingcute:down-small-fill" width="17" height="17" aria-hidden="true" />
@@ -52,17 +53,17 @@
       </template>
     </el-dropdown>
     <div class="toolbar">
-      <div v-if="uiStore.dark" class="sun-icon icon-item" @click="openDark($event)">
+      <div v-if="uiStore.dark" data-motion-control class="sun-icon icon-item" @click="openDark($event)">
         <Icon icon="mingcute:sun-fill"/>
       </div>
-      <div v-else class="dark-icon icon-item" @click="openDark($event)">
+      <div v-else data-motion-control class="dark-icon icon-item" @click="openDark($event)">
         <Icon icon="solar:moon-linear"/>
       </div>
-      <div class="notice icon-item" @click="openNotice">
+      <div data-motion-control class="notice icon-item" @click="openNotice">
         <Icon icon="streamline-plump:announcement-megaphone"/>
       </div>
-      <el-dropdown ref="userinfoRef" @visible-change="e => userInfoShow = e" :teleported="false" popper-class="detail-dropdown">
-        <div class="avatar" @click="userInfoHide" >
+      <el-dropdown ref="userinfoRef" @visible-change="onUserInfoVisible" :teleported="false" popper-class="detail-dropdown">
+        <div data-motion-control class="avatar" @click="userInfoHide" >
           <div class="avatar-text">
             <div>{{ formatName(userStore.user.email) }}</div>
           </div>
@@ -122,15 +123,17 @@ import {Icon} from "@iconify/vue";
 import {useUiStore} from "@/store/ui.js";
 import {useUserStore} from "@/store/user.js";
 import {useRoute} from "vue-router";
-import {computed, ref} from "vue";
+import {computed, nextTick, onMounted, onUnmounted, ref} from "vue";
 import {useSettingStore} from "@/store/setting.js";
 import {hasPerm} from "@/perm/perm.js"
 import {useI18n} from "vue-i18n";
 import {setExtend} from "@/utils/day.js"
 import MailSearch from '@/components/mail-search/index.vue'
+import { bindInteractiveMotion, gsap, reduceMotion } from '@/utils/motion.js'
 
 const {t} = useI18n();
 const route = useRoute();
+const headerRoot = ref(null)
 const settingStore = useSettingStore();
 const userStore = useUserStore();
 const uiStore = useUiStore();
@@ -141,6 +144,7 @@ const managementPermissions = ['analysis:query', 'user:query', 'all-email:query'
 const managementRoutes = ['analysis', 'user', 'all-email', 'role', 'reg-key', 'sys-setting']
 const hasManagementAccess = computed(() => managementPermissions.some(hasPerm))
 const isManagementRoute = computed(() => managementRoutes.includes(route.meta.name))
+let stopInteractiveMotion = () => {}
 
 const accountCount = computed(() => {
   return userStore.user.role.accountCount
@@ -239,35 +243,19 @@ function openNotice() {
 }
 
 function openDark(e) {
-
   const nextIsDark = !uiStore.dark
   const root = document.documentElement
-
-  if (!document.startViewTransition) {
-    switchDark(nextIsDark, root);
-    return
-  }
-
-  const x = e.clientX
-  const y = e.clientY
-
-  const maxX = Math.max(x, window.innerWidth - x)
-  const maxY = Math.max(y, window.innerHeight - y)
-  const endRadius = Math.hypot(maxX, maxY)
-
-  // 标记切换目标，供 CSS 选择器使用
-  root.setAttribute('data-theme-to', nextIsDark ? 'dark' : 'light')
-  root.style.setProperty('--vt-x', `${x}px`)
-  root.style.setProperty('--vt-y', `${y}px`)
-  root.style.setProperty('--vt-end-radius', `${endRadius + 10}px`)
-
-  const transition = document.startViewTransition(() => {
-    switchDark(nextIsDark, root);
-  })
-
-  transition.finished.finally(() => {
-    // 清理标记
-    root.removeAttribute('data-theme-to')
+  if (reduceMotion()) return switchDark(nextIsDark, root)
+  const app = document.getElementById('app')
+  gsap.to(app, {
+    autoAlpha: 0.94,
+    scale: 0.995,
+    duration: 0.12,
+    ease: 'power2.in',
+    onComplete: () => {
+      switchDark(nextIsDark, root)
+      gsap.to(app, { autoAlpha: 1, scale: 1, duration: 0.24, ease: 'power2.out', clearProps: 'transform,visibility' })
+    }
   })
 }
 
@@ -283,6 +271,34 @@ function openSend() {
   uiStore.writerRef.open()
 }
 
+function animateDropdown(selector, visible) {
+  if (!visible || reduceMotion()) return
+  nextTick(() => {
+    const menu = document.querySelector(selector)
+    if (!menu) return
+    const items = menu.querySelectorAll('.el-dropdown-menu__item')
+    gsap.killTweensOf([menu, ...items])
+    gsap.fromTo(menu, { autoAlpha: 0, y: -7, scale: 0.985 }, {
+      autoAlpha: 1,
+      y: 0,
+      scale: 1,
+      duration: 0.2,
+      ease: 'power2.out',
+      clearProps: 'transform,visibility'
+    })
+    if (items.length) gsap.from(items, { autoAlpha: 0, y: -4, duration: 0.16, stagger: 0.025, ease: 'power2.out' })
+  })
+}
+
+function onManagementVisible(visible) {
+  animateDropdown('.management-menu-popper', visible)
+}
+
+function onUserInfoVisible(visible) {
+  userInfoShow.value = visible
+  animateDropdown('.detail-dropdown', visible)
+}
+
 function openManagement(name) {
   router.push({ name })
 }
@@ -290,6 +306,15 @@ function openManagement(name) {
 function changeAside() {
   uiStore.asideShow = !uiStore.asideShow
 }
+
+onMounted(() => {
+  stopInteractiveMotion = bindInteractiveMotion(headerRoot.value)
+  if (!reduceMotion()) {
+    gsap.from(headerRoot.value, { autoAlpha: 0, y: -10, duration: 0.42, ease: 'power2.out', clearProps: 'transform,visibility' })
+  }
+})
+
+onUnmounted(() => stopInteractiveMotion())
 
 function clickLogout() {
   logoutLoading.value = true
@@ -314,7 +339,7 @@ function formatName(email) {
 .management-menu-popper.el-popper {
   padding: 5px;
   border: 1px solid color-mix(in srgb, var(--el-border-color) 78%, transparent);
-  border-radius: 8px;
+  border-radius: var(--ds-radius-lg);
   background: color-mix(in srgb, var(--el-bg-color) 88%, transparent);
   box-shadow: 0 14px 36px color-mix(in srgb, #000 18%, transparent), inset 0 1px 0 rgba(255, 255, 255, 0.24);
   backdrop-filter: blur(20px) saturate(150%);
@@ -458,7 +483,7 @@ function formatName(email) {
   backdrop-filter: blur(18px) saturate(145%);
   -webkit-backdrop-filter: blur(18px) saturate(145%);
   cursor: pointer;
-  transition: color .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+  transition: color var(--ds-duration-fast) var(--ds-ease-standard), border-color var(--ds-duration-fast) var(--ds-ease-standard), background-color var(--ds-duration-fast) var(--ds-ease-standard), box-shadow var(--ds-duration-fast) var(--ds-ease-standard);
 
   span {
     font-size: 13px;
@@ -487,7 +512,7 @@ function formatName(email) {
   gap: 9px;
   padding: 0 10px;
   color: var(--el-text-color-primary);
-  border-radius: 5px;
+  border-radius: var(--ds-radius-sm);
   font-size: 13px;
   line-height: 38px;
 }
@@ -511,7 +536,7 @@ function formatName(email) {
     border-radius: 50%;
     color: #ffffff;
     background: linear-gradient(135deg, var(--el-color-primary), var(--el-color-primary-dark-2));
-    transition: all 0.3s ease;
+    transition: transform var(--ds-duration-slow) var(--ds-ease-standard), background-color var(--ds-duration-slow) var(--ds-ease-standard);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -553,7 +578,7 @@ function formatName(email) {
     align-self: center;
     width: 30px;
     height: 30px;
-    border-radius: 4px;
+    border-radius: var(--ds-radius-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -590,7 +615,7 @@ function formatName(email) {
       display: flex;
       justify-content: center;
       align-items: center;
-      border-radius: 8px;
+      border-radius: var(--ds-radius-lg);
       border: 1px solid var(--dark-border);
     }
 

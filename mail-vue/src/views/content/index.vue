@@ -1,5 +1,5 @@
 <template>
-  <div class="box">
+  <div ref="contentRoot" class="box">
     <div class="header-actions">
       <Icon class="icon" icon="material-symbols-light:arrow-back-ios-new" width="20" height="20" @click="handleBack"/>
       <Icon v-perm="'email:delete'" class="icon" icon="uiw:delete" width="16" height="16" @click="handleDelete"/>
@@ -14,10 +14,10 @@
     <el-scrollbar class="scrollbar">
       <div class="container">
         <div class="email-title">
-          {{ email.subject }}
+          <span class="motion-title">{{ email.subject }}</span>
         </div>
         <div class="content">
-          <div class="email-info">
+          <div class="email-info motion-sender">
             <div>
               <div class="send"><span class="send-source">{{$t('from')}}</span>
                 <div class="send-name">
@@ -34,11 +34,11 @@
             <el-alert v-if="email.status === 4" :closable="false" :title="$t('complained')" class="email-msg" type="warning" show-icon />
             <el-alert v-if="email.status === 5" :closable="false" :title="$t('delayed')" class="email-msg" type="warning" show-icon />
           </div>
-          <el-scrollbar class="htm-scrollbar" :class="email.attList.length === 0 ? 'bottom-distance' : ''">
+          <el-scrollbar class="htm-scrollbar motion-body" :class="email.attList.length === 0 ? 'bottom-distance' : ''">
             <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
             <pre v-else class="email-text" >{{email.text}}</pre>
           </el-scrollbar>
-          <div class="att" v-if="email.attList.length > 0">
+          <div class="att motion-attachments" v-if="email.attList.length > 0">
             <div class="att-title">
               <span>{{$t('attachments')}}</span>
               <span>{{$t('attCount',{total: email.attList.length})}}</span>
@@ -75,7 +75,7 @@
 </template>
 <script setup>
 import ShadowHtml from '@/components/shadow-html/index.vue'
-import {reactive, ref, watch, onMounted, onUnmounted} from "vue";
+import {nextTick, reactive, ref, watch, onMounted, onUnmounted} from "vue";
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {emailDelete, emailPermanentDelete, emailRead} from "@/request/email.js";
@@ -92,6 +92,7 @@ import {allEmailDelete} from "@/request/all-email.js";
 import {useUiStore} from "@/store/ui.js";
 import {useI18n} from "vue-i18n";
 import {EmailUnreadEnum} from "@/enums/email-enum.js";
+import { gsap, reduceMotion } from '@/utils/motion.js'
 
 const uiStore = useUiStore();
 const settingStore = useSettingStore();
@@ -102,6 +103,8 @@ const email = emailStore.contentData.email
 const isRecycle = emailStore.contentData.delType === 'recycle'
 const showPreview = ref(false)
 const srcList = reactive([])
+const contentRoot = ref(null)
+let contentTimeline
 
 const { t } = useI18n()
 watch(() => accountStore.currentAccountId, () => {
@@ -113,10 +116,22 @@ onMounted(() => {
     email.unread = EmailUnreadEnum.READ;
     emailRead([email.emailId]);
   }
+  if (!reduceMotion()) {
+    nextTick(() => {
+      const root = contentRoot.value
+      contentTimeline = gsap.timeline({ defaults: { ease: 'power2.out' } })
+        .from(root.querySelector('.motion-title'), { autoAlpha: 0, y: 14, duration: 0.34 })
+        .from(root.querySelector('.motion-sender'), { autoAlpha: 0, y: 10, duration: 0.28 }, '-=0.12')
+        .from(root.querySelector('.motion-body'), { autoAlpha: 0, y: 8, duration: 0.34 }, '-=0.1')
+      const attachments = root.querySelector('.motion-attachments')
+      if (attachments) contentTimeline.from(attachments, { autoAlpha: 0, y: 8, duration: 0.26 }, '-=0.12')
+    })
+  }
 })
 
 onUnmounted(() => {
   emailStore.contentData.showUnread = false;
+  contentTimeline?.kill()
 })
 
 function openReply() {
