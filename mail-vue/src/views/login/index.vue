@@ -5,6 +5,8 @@
       <div class="mail-route route-one"></div>
       <div class="mail-route route-two"></div>
       <div class="mail-route route-three"></div>
+      <div class="mail-arc arc-one"></div>
+      <div class="mail-arc arc-two"></div>
       <div class="mail-hub">
         <Icon icon="mingcute:mail-send-line" width="42" height="42"/>
       </div>
@@ -12,6 +14,10 @@
       <div class="mail-packet packet-two"><Icon icon="mingcute:mail-line" width="18" height="18"/></div>
       <div class="mail-packet packet-three"><Icon icon="mingcute:mail-line" width="20" height="20"/></div>
       <div class="mail-packet packet-four"><Icon icon="mingcute:mail-line" width="18" height="18"/></div>
+      <span class="mail-signal signal-one"></span>
+      <span class="mail-signal signal-two"></span>
+      <span class="mail-signal signal-three"></span>
+      <span class="mail-signal signal-four"></span>
     </div>
     <div class="form-wrapper">
       <div class="container">
@@ -610,47 +616,79 @@ function refreshWebsiteConfig() {
 .mail-motion {
   position: fixed;
   inset: 50% auto auto 50%;
-  width: min(760px, 72vw);
+  width: min(920px, 82vw);
   aspect-ratio: 1.7;
   z-index: 1;
   pointer-events: none;
   transform: translate(-50%, -50%);
-  opacity: 0.54;
-  -webkit-mask-image: radial-gradient(ellipse 39% 58% at 50% 50%, transparent 0 52%, #000 74%);
-  mask-image: radial-gradient(ellipse 39% 58% at 50% 50%, transparent 0 52%, #000 74%);
+  opacity: 0.82;
 }
 
 .mail-route {
   position: absolute;
-  border: 1px solid color-mix(in srgb, var(--el-color-primary) 30%, transparent);
+  border: 2px solid color-mix(in srgb, var(--route-color) 72%, transparent);
   border-radius: 50%;
-  will-change: transform;
+  will-change: transform, opacity;
+  animation: route-drift var(--route-duration) ease-in-out infinite alternate;
 }
 
 .route-one {
+  --route-color: #2f8cff;
+  --route-duration: 9s;
   width: 76%;
   height: 62%;
   top: 18%;
   left: 12%;
-  transform: rotate(-14deg);
+  --route-rotation: -14deg;
 }
 
 .route-two {
+  --route-color: #20b991;
+  --route-duration: 11s;
   width: 58%;
   height: 80%;
   top: 8%;
   left: 21%;
-  border-color: color-mix(in srgb, #2dbf8d 32%, transparent);
-  transform: rotate(32deg);
+  --route-rotation: 32deg;
 }
 
 .route-three {
+  --route-color: #f3a629;
+  --route-duration: 10s;
   width: 90%;
   height: 42%;
   top: 28%;
   left: 5%;
-  border-color: color-mix(in srgb, #f0a93a 34%, transparent);
-  transform: rotate(11deg);
+  --route-rotation: 11deg;
+}
+
+.mail-arc {
+  position: absolute;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  will-change: transform, opacity;
+}
+
+.arc-one {
+  width: 54%;
+  height: 96%;
+  top: 1%;
+  left: 23%;
+  border-top-color: rgba(229, 82, 132, 0.76);
+  border-right-color: rgba(229, 82, 132, 0.44);
+  transform: rotate(-26deg);
+  animation: arc-sway-one 12s ease-in-out infinite alternate;
+}
+
+.arc-two {
+  width: 88%;
+  height: 52%;
+  top: 23%;
+  left: 6%;
+  border-bottom-color: rgba(99, 106, 238, 0.78);
+  border-left-color: rgba(99, 106, 238, 0.42);
+  transform: rotate(22deg);
+  animation: arc-sway-two 14s ease-in-out -3s infinite alternate;
 }
 
 .mail-hub,
@@ -681,7 +719,7 @@ function refreshWebsiteConfig() {
   border: 1px solid currentColor;
   border-radius: 5px;
   background: color-mix(in srgb, var(--el-bg-color) 82%, transparent);
-  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
 }
 
 .packet-one {
@@ -711,9 +749,68 @@ function refreshWebsiteConfig() {
   animation: packet-four 11s cubic-bezier(0.4, 0, 0.2, 1) -6s infinite;
 }
 
+.mail-signal {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--signal-color);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--signal-color) 17%, transparent);
+  will-change: transform, opacity;
+  animation: signal-pulse 3.8s ease-in-out var(--signal-delay) infinite;
+}
+
+.signal-one {
+  --signal-color: #2f8cff;
+  --signal-delay: -1.2s;
+  top: 18%;
+  left: 23%;
+}
+
+.signal-two {
+  --signal-color: #20b991;
+  --signal-delay: -2.1s;
+  top: 73%;
+  left: 19%;
+}
+
+.signal-three {
+  --signal-color: #f3a629;
+  --signal-delay: -0.4s;
+  top: 19%;
+  left: 76%;
+}
+
+.signal-four {
+  --signal-color: #e55284;
+  --signal-delay: -2.8s;
+  top: 74%;
+  left: 79%;
+}
+
 @keyframes hub-pulse {
   0%, 100% { transform: translate(-50%, -50%) scale(1); }
   50% { transform: translate(-50%, -50%) scale(1.04); }
+}
+
+@keyframes route-drift {
+  from { transform: rotate(var(--route-rotation)) scale(0.98); opacity: 0.62; }
+  to { transform: rotate(var(--route-rotation)) scale(1.02); opacity: 1; }
+}
+
+@keyframes arc-sway-one {
+  from { transform: rotate(-30deg) scale(0.98); opacity: 0.5; }
+  to { transform: rotate(-20deg) scale(1.03); opacity: 1; }
+}
+
+@keyframes arc-sway-two {
+  from { transform: rotate(18deg) scale(0.98); opacity: 0.45; }
+  to { transform: rotate(27deg) scale(1.02); opacity: 1; }
+}
+
+@keyframes signal-pulse {
+  0%, 100% { transform: scale(0.82); opacity: 0.5; }
+  45% { transform: scale(1.18); opacity: 1; }
 }
 
 @keyframes packet-one {
@@ -752,7 +849,10 @@ function refreshWebsiteConfig() {
 
 @media (prefers-reduced-motion: reduce) {
   .mail-hub,
-  .mail-packet {
+  .mail-packet,
+  .mail-route,
+  .mail-arc,
+  .mail-signal {
     animation: none;
   }
 }
