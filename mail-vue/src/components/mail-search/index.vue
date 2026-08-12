@@ -257,7 +257,7 @@ function matchedAttachmentNames(message) {
 .mail-search-bar { align-items: center; display: flex; height: 40px; padding: 0 7px 0 13px; border: 1px solid color-mix(in srgb, var(--el-border-color) 76%, transparent); border-radius: 8px; color: var(--regular-text-color); background: color-mix(in srgb, var(--light-ill) 86%, transparent); box-shadow: 0 6px 20px color-mix(in srgb, var(--el-text-color-primary) 7%, transparent), inset 0 1px 0 rgba(255,255,255,.24); backdrop-filter: blur(18px) saturate(145%); will-change: transform; }
 .mail-search-bar.focused { border-color: color-mix(in srgb, var(--el-color-primary) 56%, var(--el-border-color)); background: color-mix(in srgb, var(--el-bg-color) 75%, transparent); box-shadow: 0 10px 28px color-mix(in srgb, var(--el-color-primary) 14%, transparent), inset 0 1px 0 rgba(255,255,255,.3); }
 .search-icon { flex: 0 0 auto; color: var(--el-text-color-regular); }
-.mail-search-input { width: 100%; min-width: 0; height: 38px; padding: 0 10px; color: var(--el-text-color-primary); font-size: 14px; background: transparent; }
+.mail-search-input { width: 100%; min-width: 0; height: 38px; padding: 0 10px; color: var(--el-text-color-primary); font-size: 14px; outline: none; background: transparent; }
 .mail-search-input::placeholder { color: var(--secondary-text-color); }
 .mail-search-input::-webkit-search-cancel-button { appearance: none; -webkit-appearance: none; }
 .clear-button, .filter-button { position: relative; width: 32px; height: 32px; flex: 0 0 32px; display: grid; place-items: center; color: var(--regular-text-color); border-radius: 6px; cursor: pointer; }
