@@ -138,34 +138,6 @@
                   </div>
                 </div>
               </div>
-              <div class="setting-item login-visual-setting">
-                <div>
-                  <span>{{ $t('loginGame') }}</span>
-                  <small>{{ $t('loginGameDesc') }}</small>
-                </div>
-                <div class="setting-toggle-control">
-                  <el-switch
-                      v-model="setting.loginGame"
-                      :active-value="1"
-                      :inactive-value="0"
-                      @change="changeField('loginGame', $event)"
-                  />
-                </div>
-              </div>
-              <div class="setting-item login-visual-setting">
-                <div>
-                  <span>{{ $t('liquidGlass') }}</span>
-                  <small>{{ $t('liquidGlassDesc') }}</small>
-                </div>
-                <div class="setting-toggle-control">
-                  <el-switch
-                      v-model="setting.loginGlass"
-                      :active-value="1"
-                      :inactive-value="0"
-                      @change="changeField('loginGlass', $event)"
-                  />
-                </div>
-              </div>
             </div>
           </div>
 

@@ -283,8 +283,6 @@ const settingService = {
 			background: settingRow.background,
 			pwaIcon: settingRow.pwaIcon,
 			loginOpacity: settingRow.loginOpacity,
-			loginGlass: settingRow.loginGlass,
-			loginGame: settingRow.loginGame,
 			primaryColor: settingRow.primaryColor,
 			domainList: settingRow.loginDomain === 1 && !token ? [] : settingRow.domainList,
 			addVerifyOpen: settingRow.addVerifyOpen,

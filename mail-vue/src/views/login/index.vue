@@ -1,8 +1,17 @@
 <template>
   <div id="login-box">
     <div class="login-background" :style="background"></div>
-    <div v-if="settingStore.settings.loginGame !== 0" class="game-wrapper">
-      <PixelRunner :glass-enabled="settingStore.settings.loginGlass !== 0"/>
+    <div class="mail-motion" aria-hidden="true">
+      <div class="mail-route route-one"></div>
+      <div class="mail-route route-two"></div>
+      <div class="mail-route route-three"></div>
+      <div class="mail-hub">
+        <Icon icon="mingcute:mail-send-line" width="42" height="42"/>
+      </div>
+      <div class="mail-packet packet-one"><Icon icon="mingcute:mail-line" width="20" height="20"/></div>
+      <div class="mail-packet packet-two"><Icon icon="mingcute:mail-line" width="18" height="18"/></div>
+      <div class="mail-packet packet-three"><Icon icon="mingcute:mail-line" width="20" height="20"/></div>
+      <div class="mail-packet packet-four"><Icon icon="mingcute:mail-line" width="18" height="18"/></div>
     </div>
     <div class="form-wrapper">
       <div class="container">
@@ -70,7 +79,6 @@ import {cvtR2Url} from "@/utils/convert.js";
 import {loginUserInfo} from "@/request/my.js";
 import {permsToRouter} from "@/perm/perm.js";
 import {useI18n} from "vue-i18n";
-import PixelRunner from "@/components/pixel-runner/index.vue";
 
 const {t} = useI18n();
 const accountStore = useAccountStore();
@@ -272,74 +280,40 @@ function refreshWebsiteConfig() {
 
 .form-wrapper {
   position: fixed;
-  right: 0;
+  inset: 0;
   height: 100%;
-  z-index: 10;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: center;
   @media (max-width: 767px), (max-height: 540px) and (pointer: coarse) {
     position: relative;
     width: 100%;
-    min-height: 0;
+    min-height: 100dvh;
     height: auto;
-    padding: 16px 0 calc(24px + env(safe-area-inset-bottom));
-    align-items: flex-start;
-  }
-}
-
-.game-wrapper {
-  position: fixed;
-  inset: 0 450px 0 0;
-  z-index: 20;
-  padding: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-
-  :deep(.pixel-runner) {
-    pointer-events: auto;
-  }
-
-  @media (max-width: 1024px) {
-    right: 384px;
-    padding: 18px;
-  }
-
-  @media (max-width: 767px), (max-height: 540px) and (pointer: coarse) {
-    position: relative;
-    inset: auto;
-    width: 100%;
-    padding: calc(14px + env(safe-area-inset-top)) 14px 0;
-    align-items: flex-start;
+    padding: max(16px, env(safe-area-inset-top)) 0 max(24px, env(safe-area-inset-bottom));
+    align-items: center;
   }
 }
 
 .container {
   background: v-bind(loginOpacity);
-  padding-left: 40px;
-  padding-right: 40px;
+  padding: 42px 40px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  width: 450px;
-  height: 100%;
-  border-left: 1px solid var(--login-border);
-  box-shadow: var(--el-box-shadow-light);
+  width: min(450px, calc(100% - 40px));
+  min-height: 430px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: var(--ds-radius-md);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.16);
   @media (max-width: 1024px) {
-    padding: 20px 18px;
-    width: 384px;
-    margin-left: 18px;
+    width: min(420px, calc(100% - 40px));
   }
   @media (max-width: 767px), (max-height: 540px) and (pointer: coarse) {
-    border: 1px solid var(--login-border);
     padding: 20px 18px;
-    border-radius: var(--ds-radius-md);
-    height: fit-content;
+    min-height: 0;
     width: calc(100% - 36px);
-    margin-right: 18px;
-    margin-left: 18px;
 
     .btn {
       height: 44px;
@@ -492,12 +466,154 @@ function refreshWebsiteConfig() {
   }
 }
 
+.mail-motion {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  width: min(760px, 72vw);
+  aspect-ratio: 1.7;
+  z-index: 1;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  opacity: 0.54;
+  -webkit-mask-image: radial-gradient(ellipse 39% 58% at 50% 50%, transparent 0 52%, #000 74%);
+  mask-image: radial-gradient(ellipse 39% 58% at 50% 50%, transparent 0 52%, #000 74%);
+}
+
+.mail-route {
+  position: absolute;
+  border: 1px solid color-mix(in srgb, var(--el-color-primary) 30%, transparent);
+  border-radius: 50%;
+  will-change: transform;
+}
+
+.route-one {
+  width: 76%;
+  height: 62%;
+  top: 18%;
+  left: 12%;
+  transform: rotate(-14deg);
+}
+
+.route-two {
+  width: 58%;
+  height: 80%;
+  top: 8%;
+  left: 21%;
+  border-color: color-mix(in srgb, #2dbf8d 32%, transparent);
+  transform: rotate(32deg);
+}
+
+.route-three {
+  width: 90%;
+  height: 42%;
+  top: 28%;
+  left: 5%;
+  border-color: color-mix(in srgb, #f0a93a 34%, transparent);
+  transform: rotate(11deg);
+}
+
+.mail-hub,
+.mail-packet {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  color: var(--el-color-primary);
+  will-change: transform, opacity;
+}
+
+.mail-hub {
+  top: 50%;
+  left: 50%;
+  width: 80px;
+  height: 64px;
+  border: 1px solid color-mix(in srgb, var(--el-color-primary) 48%, transparent);
+  border-radius: var(--ds-radius-md);
+  background: color-mix(in srgb, var(--el-bg-color) 76%, transparent);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--el-color-primary) 14%, transparent);
+  transform: translate(-50%, -50%);
+  animation: hub-pulse 6s ease-in-out infinite;
+}
+
+.mail-packet {
+  width: 36px;
+  height: 28px;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--el-bg-color) 82%, transparent);
+  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.08);
+}
+
+.packet-one {
+  top: 28%;
+  left: 16%;
+  animation: packet-one 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.packet-two {
+  top: 71%;
+  left: 31%;
+  color: #2dbf8d;
+  animation: packet-two 10s cubic-bezier(0.4, 0, 0.2, 1) -2.5s infinite;
+}
+
+.packet-three {
+  top: 16%;
+  left: 64%;
+  color: #f0a93a;
+  animation: packet-three 9s cubic-bezier(0.4, 0, 0.2, 1) -4s infinite;
+}
+
+.packet-four {
+  top: 66%;
+  left: 73%;
+  color: var(--el-color-primary);
+  animation: packet-four 11s cubic-bezier(0.4, 0, 0.2, 1) -6s infinite;
+}
+
+@keyframes hub-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-50%, -50%) scale(1.04); }
+}
+
+@keyframes packet-one {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-8deg); opacity: 0.35; }
+  50% { transform: translate3d(360px, 86px, 0) rotate(8deg); opacity: 1; }
+}
+
+@keyframes packet-two {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(8deg); opacity: 0.3; }
+  50% { transform: translate3d(218px, -214px, 0) rotate(-10deg); opacity: 1; }
+}
+
+@keyframes packet-three {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(10deg); opacity: 0.35; }
+  50% { transform: translate3d(-246px, 190px, 0) rotate(-8deg); opacity: 1; }
+}
+
+@keyframes packet-four {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-6deg); opacity: 0.3; }
+  50% { transform: translate3d(-320px, -134px, 0) rotate(9deg); opacity: 1; }
+}
+
 .login-background {
   position: fixed;
   inset: 0;
   z-index: 0;
   pointer-events: none;
   background-color: var(--el-bg-color-page, #f4f7fb);
+}
+
+@media (max-width: 767px), (max-height: 540px) and (pointer: coarse) {
+  .mail-motion {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mail-hub,
+  .mail-packet {
+    animation: none;
+  }
 }
 
 </style>

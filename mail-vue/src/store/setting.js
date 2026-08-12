@@ -6,8 +6,6 @@ export const useSettingStore = defineStore('setting', {
         settings: {
             r2Domain: '',
             loginOpacity: 1.00,
-            loginGlass: 1,
-            loginGame: 1,
         },
         lang: '',
     }),
