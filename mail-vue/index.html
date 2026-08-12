@@ -17,14 +17,22 @@
       root.style.setProperty('--loading-primary', cachedPrimaryColor)
     }
 
-    const uiStoreStr =  localStorage.getItem('ui')
+    const uiStoreStr = localStorage.getItem('ui')
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+    let isDark = systemPrefersDark
     if (uiStoreStr) {
-      const uiStore =  JSON.parse(uiStoreStr)
-      root.setAttribute('class', uiStore.dark ? 'dark' : '');
-      const metaTag = document.getElementById('theme-color-meta');
-      const isMobile =  !window.matchMedia("(pointer: fine) and (hover: hover)").matches;
-      metaTag.setAttribute('content', uiStore.dark ? (isMobile ? '#141414' : '#000000') : (isMobile ? '#FFFFFF' : '#F1F1F1'));
+      const uiStore = JSON.parse(uiStoreStr)
+      const themeMode = ['light', 'dark', 'system'].includes(uiStore.themeMode)
+        ? uiStore.themeMode
+        : (uiStore.dark ? 'dark' : 'light')
+      isDark = (themeMode === 'system'
+        ? window.matchMedia('(prefers-color-scheme: dark)').matches
+        : themeMode === 'dark')
     }
+    root.setAttribute('class', isDark ? 'dark' : '');
+    const metaTag = document.getElementById('theme-color-meta');
+    const isMobile = !window.matchMedia("(pointer: fine) and (hover: hover)").matches;
+    metaTag.setAttribute('content', isDark ? (isMobile ? '#141414' : '#000000') : (isMobile ? '#FFFFFF' : '#F1F1F1'));
   </script>
 </head>
 <style>

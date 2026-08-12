@@ -130,6 +130,7 @@ import {useI18n} from "vue-i18n";
 import {setExtend} from "@/utils/day.js"
 import MailSearch from '@/components/mail-search/index.vue'
 import { bindInteractiveMotion, gsap, reduceMotion } from '@/utils/motion.js'
+import {setThemePreference} from '@/utils/theme-preference.js'
 
 const {t} = useI18n();
 const route = useRoute();
@@ -261,11 +262,7 @@ function openDark(e) {
 }
 
 function switchDark(nextIsDark, root) {
-  root.setAttribute('class', nextIsDark ? 'dark' : '')
-  const metaTag = document.getElementById('theme-color-meta');
-  const isMobile =  !window.matchMedia("(pointer: fine) and (hover: hover)").matches;
-  metaTag.setAttribute('content', nextIsDark ? (isMobile ? '#141414' : '#000000') : (isMobile ? '#FFFFFF' : '#F1F1F1'));
-  uiStore.dark = nextIsDark
+  setThemePreference(uiStore, nextIsDark ? 'dark' : 'light')
 }
 
 function openSend() {

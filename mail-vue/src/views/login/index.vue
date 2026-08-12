@@ -21,6 +21,23 @@
     </div>
     <div class="form-wrapper">
       <div class="container">
+        <div class="theme-switch" role="radiogroup" :aria-label="$t('themePreference')">
+          <el-tooltip :content="$t('themeLight')">
+            <button type="button" :class="{ active: uiStore.themeMode === 'light' }" :aria-label="$t('themeLight')" :aria-pressed="uiStore.themeMode === 'light'" @click="setLoginTheme('light')">
+              <Icon icon="mingcute:sun-line" width="17" height="17"/>
+            </button>
+          </el-tooltip>
+          <el-tooltip :content="$t('themeDark')">
+            <button type="button" :class="{ active: uiStore.themeMode === 'dark' }" :aria-label="$t('themeDark')" :aria-pressed="uiStore.themeMode === 'dark'" @click="setLoginTheme('dark')">
+              <Icon icon="solar:moon-linear" width="17" height="17"/>
+            </button>
+          </el-tooltip>
+          <el-tooltip :content="$t('themeSystem')">
+            <button type="button" :class="{ active: uiStore.themeMode === 'system' }" :aria-label="$t('themeSystem')" :aria-pressed="uiStore.themeMode === 'system'" @click="setLoginTheme('system')">
+              <Icon icon="mingcute:computer-line" width="17" height="17"/>
+            </button>
+          </el-tooltip>
+        </div>
         <span class="form-title">{{ settingStore.settings.title }}</span>
         <span class="form-desc">{{ show === 'login' ? $t('loginTitle') : $t('regTitle') }}</span>
         <div v-show="show === 'login'">
@@ -114,6 +131,7 @@ import {cvtR2Url} from "@/utils/convert.js";
 import {loginUserInfo} from "@/request/my.js";
 import {permsToRouter} from "@/perm/perm.js";
 import {useI18n} from "vue-i18n";
+import {setThemePreference} from "@/utils/theme-preference.js";
 
 const {t} = useI18n();
 const accountStore = useAccountStore();
@@ -207,6 +225,10 @@ const background = computed(() => {
     'background-position': 'center'
   } : ''
 })
+
+function setLoginTheme(mode) {
+  setThemePreference(uiStore, mode)
+}
 
 const openSelect = () => {
   mySelect.value.toggleMenu()
@@ -458,6 +480,10 @@ function refreshWebsiteConfig() {
     min-height: 0;
     width: calc(100% - 36px);
 
+    .theme-switch {
+      margin: -7px -4px 16px 0;
+    }
+
     .btn {
       height: 44px;
     }
@@ -477,6 +503,46 @@ function refreshWebsiteConfig() {
     height: 36px;
     width: 100%;
     border-radius: var(--ds-radius-md);
+  }
+
+  .theme-switch {
+    align-self: flex-end;
+    display: inline-flex;
+    gap: 2px;
+    margin: -28px -26px 18px 0;
+    padding: 3px;
+    border: 1px solid var(--el-border-color-light);
+    border-radius: var(--ds-radius-md);
+    background: color-mix(in srgb, var(--el-bg-color) 86%, transparent);
+
+    button {
+      width: 30px;
+      height: 28px;
+      padding: 0;
+      display: grid;
+      place-items: center;
+      border: 0;
+      border-radius: 4px;
+      color: var(--el-text-color-secondary);
+      background: transparent;
+      cursor: pointer;
+      transition: color var(--ds-duration-fast) var(--ds-ease-standard), background-color var(--ds-duration-fast) var(--ds-ease-standard), transform var(--ds-duration-fast) var(--ds-ease-standard);
+
+      &:hover {
+        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+      }
+
+      &.active {
+        color: #fff;
+        background: var(--el-color-primary);
+      }
+
+      &:focus-visible {
+        outline: 2px solid var(--el-color-primary);
+        outline-offset: 2px;
+      }
+    }
   }
 
   .form-desc {
@@ -552,6 +618,7 @@ function refreshWebsiteConfig() {
     right: 12px;
     bottom: max(12px, env(safe-area-inset-bottom));
   }
+
 }
 
 :deep(.el-input-group__append) {
@@ -839,6 +906,65 @@ function refreshWebsiteConfig() {
   z-index: 0;
   pointer-events: none;
   background-color: var(--el-bg-color-page, #f4f7fb);
+}
+
+:global(.dark) .mail-motion {
+  opacity: 0.92;
+}
+
+:global(.dark) .mail-route {
+  border-color: color-mix(in srgb, var(--route-color) 88%, transparent);
+}
+
+:global(.dark) .arc-one {
+  border-top-color: rgba(255, 112, 165, 0.9);
+  border-right-color: rgba(255, 112, 165, 0.58);
+}
+
+:global(.dark) .arc-two {
+  border-bottom-color: rgba(134, 141, 255, 0.92);
+  border-left-color: rgba(134, 141, 255, 0.58);
+}
+
+:global(.dark) .mail-hub {
+  color: #6eb8ff;
+  border-color: rgba(110, 184, 255, 0.78);
+  background: rgba(18, 28, 43, 0.88);
+  box-shadow: 0 12px 34px rgba(47, 140, 255, 0.3);
+}
+
+:global(.dark) .mail-packet {
+  background: rgba(20, 29, 43, 0.9);
+  box-shadow: 0 9px 24px rgba(0, 0, 0, 0.34);
+}
+
+:global(.dark) .packet-one,
+:global(.dark) .packet-four {
+  color: #6eb8ff;
+}
+
+:global(.dark) .packet-two {
+  color: #4ed7a8;
+}
+
+:global(.dark) .packet-three {
+  color: #ffc35c;
+}
+
+:global(.dark) .signal-one {
+  --signal-color: #6eb8ff;
+}
+
+:global(.dark) .signal-two {
+  --signal-color: #4ed7a8;
+}
+
+:global(.dark) .signal-three {
+  --signal-color: #ffc35c;
+}
+
+:global(.dark) .signal-four {
+  --signal-color: #ff70a5;
 }
 
 @media (max-width: 767px), (max-height: 540px) and (pointer: coarse) {
