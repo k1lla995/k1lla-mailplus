@@ -1,9 +1,9 @@
 <template>
   <div class="recycle-page">
     <div class="recycle-toolbar">
-      <label class="recycle-search">
+      <label class="recycle-search" :class="{ focused: searchFocused, 'has-query': query }">
         <Icon icon="iconoir:search" width="19" height="19" aria-hidden="true" />
-        <input v-model="query" type="text" autocomplete="off" :placeholder="$t('searchRecycle')" :aria-label="$t('searchRecycle')" />
+        <input v-model="query" type="search" autocomplete="off" :placeholder="$t('searchRecycle')" :aria-label="$t('searchRecycle')" @focus="searchFocused = true" @blur="searchFocused = false" />
         <button v-if="query" type="button" :aria-label="$t('clear')" @click="query = ''"><Icon icon="mingcute:close-circle-fill" width="17" height="17" /></button>
       </label>
       <div class="recycle-filters" :aria-label="$t('recycleReasonFilter')">
@@ -61,6 +61,7 @@ const scroll = ref({})
 const expiringCount = ref(0)
 const query = ref('')
 const recycleReason = ref('')
+const searchFocused = ref(false)
 const recycleFilters = [
   { value: '', label: 'recycleFilterAll' },
   { value: 'auto_spam', label: 'recycleReasonAutoSpam' },
@@ -122,7 +123,7 @@ function clearRecycle() {
 
 <style scoped lang="scss">
 .recycle-page { height: 100%; display: grid; grid-template-rows: auto auto minmax(0, 1fr); }
-.recycle-toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 15px; border-bottom: 1px solid var(--el-border-color-lighter); overflow-x: auto; }.recycle-search { flex: 0 1 440px; min-width: 220px; height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; color: var(--el-text-color-regular); border: 1px solid var(--el-border-color); border-radius: var(--ds-radius-md); background: var(--el-fill-color-light); }.recycle-search input { width: 100%; min-width: 0; height: 100%; color: var(--el-text-color-primary); background: transparent; }.recycle-search button { display: grid; place-items: center; color: var(--secondary-text-color); }
+.recycle-toolbar { display: flex; align-items: center; gap: 10px; padding: 10px 15px; border-bottom: 1px solid var(--el-border-color-lighter); overflow-x: auto; }.recycle-search { flex: 0 1 440px; min-width: 220px; height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 10px; color: var(--el-text-color-regular); border: 1px solid var(--el-border-color); border-radius: var(--ds-radius-md); background: var(--el-fill-color-light); transition: color .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease; }.recycle-search.focused { color: var(--el-color-primary); border-color: var(--el-color-primary); background: var(--el-bg-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--el-color-primary) 14%, transparent); }.recycle-search.has-query:not(.focused) { border-color: var(--el-color-primary-light-5); background: var(--el-color-primary-light-9); }.recycle-search input { width: 100%; min-width: 0; height: 100%; color: var(--el-text-color-primary); background: transparent; }.recycle-search input::-webkit-search-cancel-button { appearance: none; -webkit-appearance: none; }.recycle-search button { display: grid; place-items: center; color: var(--secondary-text-color); }.recycle-search button:hover, .recycle-search button:focus-visible { color: var(--el-color-primary); outline: none; }
 .recycle-filters { display: flex; align-items: center; gap: 6px; white-space: nowrap; }.recycle-filter { height: 28px; padding: 0 9px; color: var(--secondary-text-color); border: 1px solid var(--el-border-color); border-radius: 999px; background: var(--el-bg-color); font-size: 12px; cursor: pointer; transition: color .16s ease, border-color .16s ease, background .16s ease; }.recycle-filter:hover, .recycle-filter:focus-visible { color: var(--el-color-primary); border-color: var(--el-color-primary-light-5); outline: none; }.recycle-filter.active { color: var(--el-color-primary); border-color: var(--el-color-primary-light-5); background: var(--el-color-primary-light-9); font-weight: 600; }.recycle-filter--auto_spam.active { color: var(--el-color-danger); border-color: var(--el-color-danger-light-5); background: var(--el-color-danger-light-9); }.recycle-filter--manual_rule.active { color: var(--el-color-warning-dark-2); border-color: var(--el-color-warning-light-5); background: var(--el-color-warning-light-9); }.recycle-filter--blacklist.active { color: var(--el-color-info-dark-2); border-color: var(--el-color-info-light-5); background: var(--el-color-info-light-9); }
 .expiry-alert { margin: 10px 15px 0; width: auto; }
 .clear-recycle { width: 30px; height: 30px; display: grid; place-items: center; color: var(--el-color-danger); border-radius: var(--ds-radius-sm); cursor: pointer; }.clear-recycle:hover, .clear-recycle:focus-visible { background: var(--el-color-danger-light-9); }

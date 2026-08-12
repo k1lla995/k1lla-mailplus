@@ -1,5 +1,5 @@
 <template>
-  <div ref="headerRoot" class="header" :class="!hasPerm('email:send') ? 'not-send' : ''">
+  <div ref="headerRoot" class="header" :class="{ 'not-send': !hasPerm('email:send'), 'without-mail-search': isRecycleRoute }">
     <div class="header-btn">
       <hanburger @click="changeAside"></hanburger>
       <span class="breadcrumb-item">{{ $t(route.meta.title) }}</span>
@@ -9,7 +9,7 @@
         <Icon icon="material-symbols:edit-outline-sharp" width="22" height="22"/>
       </div>
     </div>
-    <mail-search class="mail-search" />
+    <mail-search v-if="!isRecycleRoute" class="mail-search" />
     <el-dropdown
       v-if="hasManagementAccess"
       class="management-dropdown"
@@ -144,6 +144,7 @@ const managementPermissions = ['analysis:query', 'user:query', 'all-email:query'
 const managementRoutes = ['analysis', 'user', 'all-email', 'role', 'reg-key', 'sys-setting']
 const hasManagementAccess = computed(() => managementPermissions.some(hasPerm))
 const isManagementRoute = computed(() => managementRoutes.includes(route.meta.name))
+const isRecycleRoute = computed(() => route.meta.name === 'recycle')
 let stopInteractiveMotion = () => {}
 
 const accountCount = computed(() => {
@@ -457,6 +458,14 @@ function formatName(email) {
 
 .header.not-send {
   grid-template-columns: auto minmax(260px, 720px) auto 1fr;
+}
+
+.header.without-mail-search {
+  grid-template-columns: auto auto auto 1fr;
+}
+
+.header.not-send.without-mail-search {
+  grid-template-columns: auto auto 1fr;
 }
 
 .mail-search {
