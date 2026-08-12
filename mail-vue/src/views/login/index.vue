@@ -843,8 +843,87 @@ function refreshWebsiteConfig() {
 
 @media (max-width: 767px), (max-height: 540px) and (pointer: coarse) {
   .mail-motion {
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: min(620px, 154vw);
+    opacity: 0.48;
+    transform: translate(-50%, -50%) scale(0.82);
+    transform-origin: center;
+  }
+
+  .mail-hub {
+    width: 62px;
+    height: 50px;
+  }
+
+  .mail-hub :deep(svg) {
+    width: 32px;
+    height: 32px;
+  }
+
+  .mail-packet {
+    width: 30px;
+    height: 24px;
+  }
+
+  .packet-one {
+    top: 12%;
+    left: 11%;
+  }
+
+  .packet-two {
+    top: 79%;
+    left: 12%;
+  }
+
+  .packet-three,
+  .packet-four {
     display: none;
   }
+
+  .mail-signal {
+    width: 8px;
+    height: 8px;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--signal-color) 17%, transparent);
+  }
+
+  .signal-one {
+    top: 9%;
+    left: 27%;
+  }
+
+  .signal-two {
+    top: 86%;
+    left: 24%;
+  }
+
+  .signal-three {
+    top: 12%;
+    left: 72%;
+  }
+
+  .signal-four {
+    top: 84%;
+    left: 75%;
+  }
+
+  .packet-one {
+    animation-name: mobile-packet-one;
+  }
+
+  .packet-two {
+    animation-name: mobile-packet-two;
+  }
+}
+
+@keyframes mobile-packet-one {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-8deg); opacity: 0.3; }
+  50% { transform: translate3d(192px, 58px, 0) rotate(8deg); opacity: 1; }
+}
+
+@keyframes mobile-packet-two {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(8deg); opacity: 0.3; }
+  50% { transform: translate3d(180px, -120px, 0) rotate(-10deg); opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
