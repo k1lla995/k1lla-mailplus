@@ -10,11 +10,36 @@
           <div class="settings-card">
             <div class="card-title">{{ $t('websiteSetting') }}</div>
             <div class="card-content">
+              <div v-if="isRootAdmin" class="setting-item">
+                <div><span>{{ $t('websiteReg') }}</span></div>
+                <div>
+                  <el-switch @change="change" :before-change="beforeChange" :active-value="0" :inactive-value="1"
+                             v-model="setting.register"/>
+                </div>
+              </div>
               <div class="setting-item">
                 <div><span>{{ $t('loginDomain') }}</span></div>
                 <div>
                   <el-switch @change="change" :before-change="beforeChange" :active-value="1" :inactive-value="0"
                              v-model="setting.loginDomain"/>
+                </div>
+              </div>
+              <div v-if="isRootAdmin" class="setting-item">
+                <div><span>{{ $t('regKey') }}</span></div>
+                <div>
+                  <el-select
+                      @change="change"
+                      :style="`width: ${locale === 'en' ? 100 : 80}px;`"
+                      v-model="setting.regKey"
+                      placeholder="Select"
+                  >
+                    <el-option
+                        v-for="item in regKeyOptions"
+                        :key="item.value"
+                        :label="item.label"
+                        :value="item.value"
+                    />
+                  </el-select>
                 </div>
               </div>
               <div class="setting-item">
@@ -836,6 +861,7 @@ const showResendList = ref(false)
 const settingStore = useSettingStore();
 const uiStore = useUiStore();
 const {settings: setting} = storeToRefs(settingStore);
+const isRootAdmin = computed(() => userStore.user.type === 0)
 const editTitle = ref('')
 const settingLoading = ref(false)
 const clearS3Loading = ref(false)
@@ -897,6 +923,12 @@ const authRefreshOptions = computed(() => [
   {label: '10s', value: 10},
   {label: '15s', value: 15},
   {label: '20s', value: 20},
+])
+
+const regKeyOptions = computed(() => [
+  {label: t('enable'), value: 0},
+  {label: t('disable'), value: 1},
+  {label: t('optional'), value: 2},
 ])
 
 const pwaIconSrc = computed(() => setting.value.pwaIcon

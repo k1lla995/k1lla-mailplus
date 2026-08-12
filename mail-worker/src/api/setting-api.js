@@ -6,7 +6,16 @@ import telegramService from '../service/telegram-service';
 import accessControlService from '../security/access-control-service';
 
 app.put('/setting/set', async (c) => {
-	await settingService.set(c, await c.req.json());
+	const params = await c.req.json();
+	const currentSetting = await settingService.query(c);
+	const registrationFields = ['register', 'regKey'];
+	const updatesRegistration = registrationFields.some(field =>
+		field in params && Number(params[field]) !== Number(currentSetting[field])
+	);
+	if (updatesRegistration && !await accessControlService.isRootAdmin(c)) {
+		return c.json(result.fail('Only the root administrator can configure public registration', 403), 403);
+	}
+	await settingService.set(c, params);
 	return c.json(result.ok());
 });
 

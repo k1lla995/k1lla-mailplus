@@ -29,23 +29,78 @@ async function listUsers(token) {
 }
 
 describe('administrator account bootstrap', () => {
-	it('does not expose a public registration route', async () => {
+	it('restores public registration when the root administrator enables it', async () => {
 		const initialized = await initializeDatabase();
 		expect(initialized.message).toBe('success');
 		expect(initialized.admin.temporaryPassword).toBeTruthy();
+		const rootLogin = await login(initialized.admin.temporaryPassword);
+		const rootToken = rootLogin.data.token;
 
-		const response = await SELF.fetch(`${BASE_URL}/register`, {
+		const websiteConfig = await jsonRequest('/setting/websiteConfig');
+		expect(websiteConfig.data).toMatchObject({ register: 0, regKey: 1 });
+
+		const response = await jsonRequest('/register', {
 			method: 'POST',
 			headers: { 'content-type': 'application/json' },
-			body: JSON.stringify({ email: 'Admin@Example.com', password: 'attacker-password' })
+			body: JSON.stringify({ email: 'member@example.com', password: 'member-password' })
 		});
-
-		expect(response.status).toBe(404);
+		expect(response.code).toBe(200);
 
 		const { total } = await env.db.prepare(
 			'SELECT COUNT(*) AS total FROM user WHERE email = ? COLLATE NOCASE'
-		).bind('admin@example.com').first();
+		).bind('member@example.com').first();
 		expect(total).toBe(1);
+
+		const disabled = await jsonRequest('/setting/set', {
+			method: 'PUT',
+			headers: { Authorization: rootToken, 'content-type': 'application/json' },
+			body: JSON.stringify({ register: 1 })
+		});
+		expect(disabled.code).toBe(200);
+
+		const rejected = await jsonRequest('/register', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ email: 'blocked@example.com', password: 'member-password' })
+		});
+		expect(rejected.code).not.toBe(200);
+	});
+
+	it('allows only the root administrator to change public registration settings', async () => {
+		const initialized = await initializeDatabase();
+		const rootLogin = await login(initialized.admin.temporaryPassword);
+		const rootToken = rootLogin.data.token;
+
+		const memberRegistration = await jsonRequest('/register', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ email: 'member@example.com', password: 'member-password' })
+		});
+		expect(memberRegistration.code).toBe(200);
+
+		const memberLogin = await jsonRequest('/login', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({ email: 'member@example.com', password: 'member-password' })
+		});
+		const memberToken = memberLogin.data.token;
+
+		const unauthorized = await jsonRequest('/setting/set', {
+			method: 'PUT',
+			headers: { Authorization: memberToken, 'content-type': 'application/json' },
+			body: JSON.stringify({ register: 1 })
+		});
+		expect(unauthorized.code).toBe(403);
+
+		const rootUpdate = await jsonRequest('/setting/set', {
+			method: 'PUT',
+			headers: { Authorization: rootToken, 'content-type': 'application/json' },
+			body: JSON.stringify({ regKey: 2 })
+		});
+		expect(rootUpdate.code).toBe(200);
+
+		const settings = await env.db.prepare('SELECT register, reg_key AS regKey FROM setting').first();
+		expect(settings).toMatchObject({ register: 0, regKey: 2 });
 	});
 
 	it('creates the administrator during the existing database initialization flow', async () => {
