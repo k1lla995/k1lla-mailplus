@@ -1,8 +1,29 @@
+import { Resend } from 'resend';
 import emailService from './email-service';
 import { emailConst } from '../const/entity-const';
 import BizError from '../error/biz-error';
 
 const resendService = {
+	verifyWebhook(c, payload) {
+		const webhookSecret = c.env.RESEND_WEBHOOK_SECRET;
+		if (!webhookSecret) {
+			throw new BizError('Invalid Resend webhook signature', 401);
+		}
+
+		try {
+			return new Resend('re_webhook_verification').webhooks.verify({
+				payload,
+				headers: {
+					id: c.req.header('svix-id'),
+					timestamp: c.req.header('svix-timestamp'),
+					signature: c.req.header('svix-signature')
+				},
+				webhookSecret
+			});
+		} catch {
+			throw new BizError('Invalid Resend webhook signature', 401);
+		}
+	},
 
 	async webhooks(c, body) {
 

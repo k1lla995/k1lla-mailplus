@@ -384,6 +384,8 @@ Without this step you can open the login page but **will not receive external ma
 
 Outbound sending usually needs a provider such as **Resend** in System Settings — that is separate from receiving. Without send config you can still receive and read mail.
 
+When using Resend delivery-status webhooks, set the signing secret from the Resend dashboard as a Worker Secret: `wrangler secret put RESEND_WEBHOOK_SECRET`. The webhook endpoint is `https://your-project-domain/api/webhooks`; unsigned or invalid events are rejected.
+
 ---
 
 ### Step 7: Recommended settings after login

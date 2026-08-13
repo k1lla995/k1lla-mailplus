@@ -382,6 +382,8 @@ https://mail.example.com/api/init/a1b2c3d4e5f6...
 
 发信（对外发信）通常还要在系统设置里配置 **Resend** 等发信服务；与收信是两套配置。未配置发信时，一般仍可收信、查看邮件。
 
+使用 Resend 状态 Webhook 时，还必须将 Resend 控制台生成的签名密钥配置为 Worker Secret：`wrangler secret put RESEND_WEBHOOK_SECRET`。Webhook 地址为 `https://你的项目域名/api/webhooks`；未通过签名校验的事件会被拒绝。
+
 ---
 
 ### 第 7 步：登录后建议完成的设置
