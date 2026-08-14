@@ -370,6 +370,9 @@ let scrollTop = 0
 const latestEmail = ref(null)
 const scrollbarRef = ref(null)
 let reqLock = false
+// Keep a refresh requested during an in-flight query so account/filter
+// changes are applied as soon as the current request finishes.
+let queuedRefresh = false
 let isMobile = ref(innerWidth < 1367)
 let skeletonRows = 0
 const timePaddingRight = ref('');
@@ -937,7 +940,12 @@ function jumpDetails(email) {
 
 function getEmailList(refresh = false) {
 
-  if (reqLock) return;
+  if (reqLock) {
+    if (refresh) {
+      queuedRefresh = true
+    }
+    return;
+  }
 
   let emailId = emailList.length > 0 ? emailList.at(-1).emailId : 0;
 
@@ -965,7 +973,7 @@ function getEmailList(refresh = false) {
   }
   let start = Date.now();
 
-  props.getEmailList(emailId, queryParam.size).then(async data => {
+  Promise.resolve().then(() => props.getEmailList(emailId, queryParam.size)).then(async data => {
     let end = Date.now();
     let duration = end - start;
     if (duration < 300 && !emailId) {
@@ -1002,6 +1010,11 @@ function getEmailList(refresh = false) {
   }).finally(() => {
     loading.value = false
     reqLock = false
+
+    if (queuedRefresh) {
+      queuedRefresh = false
+      nextTick(() => getEmailList(true))
+    }
   })
 }
 

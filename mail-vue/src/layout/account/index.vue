@@ -339,8 +339,8 @@ function refresh() {
 }
 
 function changeAccount(account) {
-  accountStore.currentAccountId = account.accountId
   accountStore.currentAccount = account
+  accountStore.currentAccountId = account.accountId
 }
 
 function add() {
