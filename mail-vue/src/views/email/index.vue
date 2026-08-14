@@ -8,9 +8,11 @@
                :star-cancel="starCancel"
                :time-sort="params.timeSort"
                :email-read="emailRead"
+               show-translation
                :show-unread="true"
                actionLeft="4px"
                @jump="jumpContent"
+               @translate="openTranslation"
   >
     <template #first>
       <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-down-outline"
@@ -20,6 +22,7 @@
     </template>
 
   </emailScroll>
+  <TranslationDialog ref="translationDialogRef"/>
 </template>
 
 <script setup>
@@ -34,6 +37,7 @@ import {sleep} from "@/utils/time-utils.js";
 import router from "@/router/index.js";
 import {Icon} from "@iconify/vue";
 import { useRoute } from 'vue-router'
+import TranslationDialog from '@/components/translation-dialog/index.vue'
 
 defineOptions({
   name: 'email'
@@ -44,6 +48,7 @@ const emailStore = useEmailStore();
 const accountStore = useAccountStore();
 const settingStore = useSettingStore();
 const scroll = ref({})
+const translationDialogRef = ref(null)
 const params = reactive({
   timeSort: 0,
 })
@@ -70,6 +75,10 @@ function jumpContent(email) {
   emailStore.contentData.showStar = true
   emailStore.contentData.showReply = true
   router.push('/message')
+}
+
+function openTranslation(email) {
+  translationDialogRef.value?.openEmail(email)
 }
 
 const existIds = new Set();

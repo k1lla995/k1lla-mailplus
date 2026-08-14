@@ -56,6 +56,11 @@
           <div class="att-clear" @click="clearContent">
             <Icon icon="icon-park-outline:clear-format" width="24" height="24 "/>
           </div>
+          <el-tooltip :content="t('translateEmail')">
+            <div class="att-translate" @click="openTranslation">
+              <Icon icon="material-symbols:translate-rounded" width="23" height="23"/>
+            </div>
+          </el-tooltip>
           <div class="att-list">
             <div class="att-item" v-for="(item,index) in form.attachments" :key="index">
               <Icon v-bind="getIconByName(item.filename)"/>
@@ -91,6 +96,34 @@
         <el-button type="primary" @click="chooseContact">{{t('selectContacts')}}</el-button>
       </div>
     </el-dialog>
+    <el-dialog v-model="translationShow" :title="t('translateEmail')" width="min(720px, calc(100% - 32px))">
+      <div class="translation-controls">
+        <el-select v-model="translationTargetLanguage" filterable allow-create default-first-option :placeholder="t('targetLanguage')">
+          <el-option v-for="language in translationLanguages" :key="language" :label="language" :value="language"/>
+        </el-select>
+        <el-button type="primary" :loading="translationLoading" @click="translateCompose">
+          <Icon icon="material-symbols:translate-rounded" width="17" height="17"/>
+          <span>{{ t('translate') }}</span>
+        </el-button>
+      </div>
+      <template v-if="translationResult">
+        <el-radio-group v-model="translationMode" class="translation-mode">
+          <el-radio value="append">{{ t('translationAppend') }}</el-radio>
+          <el-radio value="replace">{{ t('translationReplace') }}</el-radio>
+        </el-radio-group>
+        <div class="translation-preview">
+          <div class="translation-label">{{ t('translatedSubject') }}</div>
+          <div class="translation-subject">{{ translationResult.subject || '-' }}</div>
+          <div class="translation-label">{{ t('translatedContent') }}</div>
+          <pre>{{ translationResult.text }}</pre>
+        </div>
+      </template>
+      <el-empty v-else-if="!translationLoading" :description="t('translationNoResult')" :image-size="96"/>
+      <template #footer>
+        <el-button @click="translationShow = false">{{ t('cancel') }}</el-button>
+        <el-button type="primary" :disabled="!translationResult" @click="applyTranslation">{{ t('applyTranslation') }}</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 <script setup>
@@ -115,6 +148,7 @@ import {useI18n} from "vue-i18n";
 import router from "@/router/index.js";
 import {ElMessageBox} from "element-plus";
 import {contactList, recentRecipientList} from "@/request/contact.js";
+import {translationConfig, translationTranslate} from '@/request/translation.js'
 
 defineExpose({
   open,
@@ -164,6 +198,12 @@ const form = reactive({
 
 const selectRecipientList = ref([])
 const recentRecipients = ref([])
+const translationShow = ref(false)
+const translationLoading = ref(false)
+const translationResult = ref(null)
+const translationTargetLanguage = ref('Chinese')
+const translationMode = ref('append')
+const translationLanguages = ['Chinese', 'English', 'Japanese', 'Korean', 'Spanish', 'French', 'German']
 
 async function openContacts() {
   showContacts.value = true
@@ -612,6 +652,81 @@ function close() {
 
 }
 
+async function openTranslation() {
+  const content = editor.value.getContent?.() || form.content
+  if (!content) {
+    ElMessage({ message: t('emptyContentMsg'), type: 'error', plain: true })
+    return
+  }
+
+  translationResult.value = null
+  translationMode.value = 'append'
+  translationShow.value = true
+  try {
+    const config = await translationConfig()
+    translationTargetLanguage.value = config.defaultTargetLanguage || 'Chinese'
+  } catch (error) {
+    ElMessage({ message: error?.message || t('translationNotConfigured'), type: 'error', plain: true })
+    return
+  }
+  translateCompose()
+}
+
+async function translateCompose() {
+  const content = editor.value.getContent?.() || form.content
+  if (!content || translationLoading.value) return
+
+  translationLoading.value = true
+  try {
+    translationResult.value = await translationTranslate({
+      subject: form.subject,
+      content,
+      targetLanguage: translationTargetLanguage.value
+    })
+  } catch (error) {
+    ElMessage({ message: error?.message || t('translationFailed'), type: 'error', plain: true })
+  } finally {
+    translationLoading.value = false
+  }
+}
+
+async function applyTranslation() {
+  if (!translationResult.value) return
+
+  if (translationMode.value === 'replace') {
+    try {
+      await ElMessageBox.confirm(t('translationReplaceConfirm'), {
+        confirmButtonText: t('confirm'),
+        cancelButtonText: t('cancel'),
+        type: 'warning'
+      })
+    } catch {
+      return
+    }
+  }
+
+  const original = editor.value.getContent?.() || form.content
+  const translatedHtml = textToHtml(translationResult.value.text)
+  const nextContent = translationMode.value === 'replace'
+    ? translatedHtml
+    : `${original}<hr><div><strong>${escapeHtml(t('translatedContent'))}</strong></div>${translatedHtml}`
+
+  if (translationMode.value === 'replace' && translationResult.value.subject) {
+    form.subject = translationResult.value.subject
+  }
+
+  editor.value.setContent(nextContent)
+  translationShow.value = false
+}
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[char])
+}
+
+function textToHtml(value) {
+  return `<div style="white-space: pre-wrap;word-break: break-word">${escapeHtml(value)}</div>`
+}
+
 </script>
 <style>
 .write-select .el-select-dropdown__list {
@@ -727,7 +842,7 @@ function close() {
 
       .button-item {
         display: grid;
-        grid-template-columns: auto auto 1fr auto;
+        grid-template-columns: auto auto auto 1fr auto;
 
         .att-add {
           cursor: pointer;
@@ -736,6 +851,16 @@ function close() {
         .att-clear {
           cursor: pointer;
           margin-left: 10px;
+        }
+
+        .att-translate {
+          cursor: pointer;
+          margin-left: 10px;
+          color: var(--el-text-color-regular);
+
+          &:hover {
+            color: var(--el-color-primary);
+          }
         }
 
         .att-list {
@@ -795,6 +920,62 @@ function close() {
 
 .add-contact {
   color: var(--regular-text-color)
+}
+
+.translation-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+
+  .el-select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .el-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+}
+
+.translation-mode {
+  margin-bottom: 14px;
+}
+
+.translation-preview {
+  padding: 14px;
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+  background: var(--el-fill-color-blank);
+}
+
+.translation-label {
+  margin-bottom: 5px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.translation-subject {
+  margin-bottom: 16px;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.translation-preview pre {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+  line-height: 1.65;
+}
+
+@media (max-width: 480px) {
+  .translation-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
 }
 
 .write-select {

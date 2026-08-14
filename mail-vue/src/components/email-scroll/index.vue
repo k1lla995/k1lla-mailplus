@@ -117,6 +117,9 @@
                 </div>
               </div>
               <div class="email-right" :style="showUserInfo ? 'align-self: start;':''">
+                <el-tooltip v-if="showTranslation" :content="t('translateEmail')">
+                  <Icon class="email-translate" icon="material-symbols:translate-rounded" width="19" height="19" @click.stop="emit('translate', item)"/>
+                </el-tooltip>
                 <span class="email-time" :style="(item.unread === EmailUnreadEnum.UNREAD && showUnread) ? 'font-weight: bold' : ''">{{ item.formatCreateTime }}</span>
               </div>
             </div>
@@ -204,6 +207,14 @@
               <div class="right-dropdown-item">
                 <Icon icon="solar:star-line-duotone" width="19" height="19"/>
                 <span>{{t('star')}}</span>
+              </div>
+            </template>
+          </el-dropdown-item>
+          <el-dropdown-item v-if="showTranslation" @click="emit('translate', rightClickEmail)">
+            <template #default>
+              <div class="right-dropdown-item">
+                <Icon icon="material-symbols:translate-rounded" width="19" height="19"/>
+                <span>{{t('translateEmail')}}</span>
               </div>
             </template>
           </el-dropdown-item>
@@ -325,10 +336,11 @@ const props = defineProps({
     default: ''
   },
   emailRestore: Function,
-  emailPermanentDelete: Function
+  emailPermanentDelete: Function,
+  showTranslation: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['jump', 'refresh-before', 'delete-draft', 'right-search'])
+const emit = defineEmits(['jump', 'refresh-before', 'delete-draft', 'right-search', 'translate'])
 const {t} = useI18n()
 
 function recycleReasonLabel(reason) {
@@ -1387,7 +1399,20 @@ function loadData() {
   }
 
 
-  .email-right {
+.email-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .email-translate {
+    color: var(--el-text-color-secondary);
+    cursor: pointer;
+    flex: 0 0 auto;
+
+    &:hover {
+      color: var(--el-color-primary);
+    }
+  }
     text-align: right;
     font-size: 12px;
     white-space: nowrap;
@@ -1395,7 +1420,9 @@ function loadData() {
     padding-left: 15px;
     align-items: center;
     @media (max-width: 1366px) {
-      display: none;
+      .email-time {
+        display: none;
+      }
     }
   }
 

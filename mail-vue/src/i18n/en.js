@@ -414,7 +414,29 @@ const en = {
     recycleReasonBlacklist: 'Blacklist rule',
     recycleReasonRecentDelete: 'Recently deleted',
     includeRecycle: 'Include Trash',
-    includeRecycleHint: 'Searches deleted emails too. They can still be restored from Trash.'
+    includeRecycleHint: 'Searches deleted emails too. They can still be restored from Trash.',
+    translateEmail: 'Translate email',
+    translate: 'Translate',
+    targetLanguage: 'Target language',
+    translatedSubject: 'Translated subject',
+    translatedContent: 'Translated content',
+    translationNoResult: 'No translation yet',
+    translationFailed: 'Translation failed. Check the provider settings and try again.',
+    translationAppend: 'Keep original and show translation',
+    translationReplace: 'Replace original with translation',
+    translationReplaceConfirm: 'The translation will replace the current subject and body. Continue?',
+    applyTranslation: 'Apply translation',
+    translationSettings: 'Translation settings',
+    translationProvider: 'Provider',
+    translationBaseUrl: 'API Base URL',
+    translationModel: 'Model name',
+    translationApiKey: 'API Key',
+    defaultTargetLanguage: 'Default target language',
+    translationConfigured: 'Configured (API Key is stored on the server)',
+    translationNotConfigured: 'Translation provider is not configured',
+    translationKeySaved: 'API Key saved. Leave blank to keep the current key',
+    translationKeyHint: 'The key is encrypted and stored in the Worker. It is never returned to the browser.',
+    configure: 'Configure'
 }
 
 export default en

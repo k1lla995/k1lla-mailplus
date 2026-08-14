@@ -52,6 +52,16 @@
         <el-option label="English" value="en" @pointerdown.prevent.stop="changeLang('en')"/>
       </el-select>
     </div>
+    <div class="translation-setting">
+      <div class="title">{{ $t('translationSettings') }}</div>
+      <div class="translation-summary">
+        <span>{{ translationForm.hasApiKey ? $t('translationConfigured') : $t('translationNotConfigured') }}</span>
+        <el-button type="primary" @click="openTranslationSettings">
+          <Icon icon="material-symbols:translate-rounded" width="18" height="18"/>
+          <span>{{ $t('configure') }}</span>
+        </el-button>
+      </div>
+    </div>
     <div class="telegram-setting" v-if="telegram">
       <div class="title">Telegram 推送</div>
       <template v-if="telegram.authorized">
@@ -104,6 +114,34 @@
         <el-button type="primary" :loading="setPwdLoading" @click="submitPwd">{{$t('save')}}</el-button>
       </div>
     </el-dialog>
+    <el-dialog v-model="translationSettingsShow" :title="$t('translationSettings')" width="min(520px, calc(100% - 32px))">
+      <el-form label-position="top" class="translation-form">
+        <el-form-item :label="$t('translationProvider')">
+          <el-select v-model="translationForm.provider" @change="applyProviderDefaults">
+            <el-option v-for="provider in translationProviders" :key="provider.value" :label="provider.label" :value="provider.value"/>
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="$t('translationBaseUrl')">
+          <el-input v-model.trim="translationForm.baseUrl" placeholder="https://api.example.com/v1"/>
+        </el-form-item>
+        <el-form-item :label="$t('translationModel')">
+          <el-input v-model.trim="translationForm.model"/>
+        </el-form-item>
+        <el-form-item :label="$t('translationApiKey')">
+          <el-input v-model="translationForm.apiKey" type="password" show-password autocomplete="new-password" :placeholder="translationForm.hasApiKey ? $t('translationKeySaved') : ''"/>
+          <div class="translation-key-hint">{{ $t('translationKeyHint') }}</div>
+        </el-form-item>
+        <el-form-item :label="$t('defaultTargetLanguage')">
+          <el-select v-model="translationForm.defaultTargetLanguage" filterable allow-create default-first-option>
+            <el-option v-for="language in translationLanguages" :key="language" :label="language" :value="language"/>
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="translationSettingsShow = false">{{ $t('cancel') }}</el-button>
+        <el-button type="primary" :loading="translationLoading" @click="saveTranslationSettings">{{ $t('save') }}</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 <script setup>
@@ -115,6 +153,8 @@ import {accountSetName} from "@/request/account.js";
 import {useAccountStore} from "@/store/account.js";
 import {useI18n} from "vue-i18n";
 import {useSettingStore} from "@/store/setting.js";
+import {Icon} from '@iconify/vue'
+import {translationConfig, translationSaveConfig} from '@/request/translation.js'
 
 const { t } = useI18n()
 const accountStore = useAccountStore()
@@ -128,6 +168,25 @@ const telegram = ref(null)
 const bindingCode = ref('')
 const bindingBotLink = ref('')
 const telegramLoading = ref(false)
+const translationSettingsShow = ref(false)
+const translationLoading = ref(false)
+const translationLanguages = ['Chinese', 'English', 'Japanese', 'Korean', 'Spanish', 'French', 'German']
+const translationProviders = [
+  { value: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
+  { value: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
+  { value: 'mimo', label: 'Xiaomi MiMo', baseUrl: 'https://api.xiaomimimo.com/v1', model: 'mimo-v2-flash' },
+  { value: 'qwen', label: 'Tongyi Qianwen', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
+  { value: 'anthropic', label: 'Anthropic', baseUrl: 'https://api.anthropic.com', model: 'claude-sonnet-4-20250514' },
+  { value: 'custom', label: 'OpenAI-compatible API', baseUrl: '', model: '' }
+]
+const translationForm = reactive({
+  provider: 'openai',
+  baseUrl: 'https://api.openai.com/v1',
+  model: 'gpt-4o-mini',
+  apiKey: '',
+  defaultTargetLanguage: 'Chinese',
+  hasApiKey: false
+})
 
 defineOptions({
   name: 'setting'
@@ -181,6 +240,48 @@ function changeLang(lang) {
   }
   localStorage.setItem('setting', JSON.stringify({...setting, lang}))
   window.location.reload()
+}
+
+async function loadTranslationConfig() {
+  try {
+    const config = await translationConfig()
+    Object.assign(translationForm, config, { apiKey: '' })
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+async function openTranslationSettings() {
+  await loadTranslationConfig()
+  translationSettingsShow.value = true
+}
+
+function applyProviderDefaults(provider) {
+  const current = translationProviders.find(item => item.value === provider)
+  if (!current) return
+  translationForm.baseUrl = current.baseUrl
+  translationForm.model = current.model
+}
+
+async function saveTranslationSettings() {
+  if (translationLoading.value) return
+  translationLoading.value = true
+  try {
+    const config = await translationSaveConfig({
+      provider: translationForm.provider,
+      baseUrl: translationForm.baseUrl,
+      model: translationForm.model,
+      apiKey: translationForm.apiKey,
+      defaultTargetLanguage: translationForm.defaultTargetLanguage
+    })
+    Object.assign(translationForm, config, { apiKey: '' })
+    translationSettingsShow.value = false
+    ElMessage({ message: t('saveSuccessMsg'), type: 'success', plain: true })
+  } catch (error) {
+    ElMessage({ message: error?.message || t('saveFailMsg'), type: 'error', plain: true })
+  } finally {
+    translationLoading.value = false
+  }
 }
 
 function loadTelegram() {
@@ -242,6 +343,7 @@ function removeTelegramBinding() {
 }
 
 loadTelegram()
+loadTranslationConfig()
 
 const pwdShow = ref(false)
 const form = reactive({
@@ -432,6 +534,27 @@ function submitPwd() {
     }
   }
 
+  .translation-setting {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 40px;
+
+    .translation-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      color: var(--regular-text-color);
+
+      .el-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+    }
+  }
+
   .telegram-setting {
     font-size: 14px;
     display: flex;
@@ -473,5 +596,18 @@ function submitPwd() {
     flex-direction: column;
     gap: 20px;
   }
+}
+
+.translation-form {
+  :deep(.el-select) {
+    width: 100%;
+  }
+}
+
+.translation-key-hint {
+  margin-top: 6px;
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  line-height: 1.5;
 }
 </style>

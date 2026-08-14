@@ -47,7 +47,21 @@ const dbInit = {
 		await this.v4_0DB(c);
 		await this.v4_1DB(c);
 		await this.v4_2DB(c);
+		await this.v4_3DB(c);
 		await settingService.refresh(c);
+	},
+
+	async v4_3DB(c) {
+		await c.env.db.prepare(`CREATE TABLE IF NOT EXISTS translation_config (
+			user_id INTEGER PRIMARY KEY,
+			provider TEXT NOT NULL DEFAULT 'openai',
+			base_url TEXT NOT NULL DEFAULT '',
+			model TEXT NOT NULL DEFAULT '',
+			default_target_language TEXT NOT NULL DEFAULT 'Chinese',
+			api_key_cipher TEXT NOT NULL DEFAULT '',
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`).run();
 	},
 
 

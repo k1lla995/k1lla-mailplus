@@ -8,7 +8,9 @@
                show-status
                actionLeft="4px"
                :star-cancel="starCancel"
+               show-translation
                @jump="jumpContent"
+               @translate="openTranslation"
                :time-sort="params.timeSort"
                :type="'send'"
   >
@@ -19,6 +21,7 @@
             width="28" height="28"/>
     </template>
   </emailScroll>
+  <TranslationDialog ref="translationDialogRef"/>
 </template>
 
 <script setup>
@@ -30,6 +33,7 @@ import {starAdd, starCancel} from "@/request/star.js";
 import {defineOptions, onMounted, reactive, ref, watch} from "vue";
 import router from "@/router/index.js";
 import {Icon} from "@iconify/vue";
+import TranslationDialog from '@/components/translation-dialog/index.vue'
 
 defineOptions({
   name: 'send'
@@ -38,6 +42,7 @@ defineOptions({
 const emailStore = useEmailStore();
 const accountStore = useAccountStore();
 const sendScroll = ref({})
+const translationDialogRef = ref(null)
 const params = reactive({
   timeSort: 0,
 })
@@ -61,6 +66,10 @@ function jumpContent(email) {
   emailStore.contentData.showStar = true
   emailStore.contentData.showReply = true
   router.push('/message')
+}
+
+function openTranslation(email) {
+  translationDialogRef.value?.openEmail(email)
 }
 
 function addStar(email) {
