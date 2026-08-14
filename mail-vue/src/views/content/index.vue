@@ -2,20 +2,21 @@
   <div ref="contentRoot" class="box">
     <div class="header-actions">
       <Icon class="icon" icon="material-symbols-light:arrow-back-ios-new" width="20" height="20" @click="handleBack"/>
-      <Icon v-perm="'email:delete'" class="icon" icon="uiw:delete" width="16" height="16" @click="handleDelete"/>
-      <span class="star" v-if="emailStore.contentData.showStar">
+      <Icon v-if="email" v-perm="'email:delete'" class="icon" icon="uiw:delete" width="16" height="16" @click="handleDelete"/>
+      <span class="star" v-if="email && emailStore.contentData.showStar">
         <Icon class="icon" @click="changeStar" v-if="email.isStar" icon="fluent-color:star-16" width="20" height="20"/>
         <Icon class="icon" @click="changeStar" v-else icon="solar:star-line-duotone" width="18" height="18"/>
       </span>
-      <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openReply" icon="la:reply" width="21" height="21" />
-      <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openForward" icon="iconoir:arrow-up-right" width="20" height="20" />
-      <el-tooltip v-if="emailStore.contentData.showTranslation" :content="t('translateEmail')">
+      <Icon class="icon" v-if="email && emailStore.contentData.showReply" v-perm="'email:send'"  @click="openReply" icon="la:reply" width="21" height="21" />
+      <Icon class="icon" v-if="email && emailStore.contentData.showReply" v-perm="'email:send'"  @click="openForward" icon="iconoir:arrow-up-right" width="20" height="20" />
+      <el-tooltip v-if="email && emailStore.contentData.showTranslation" :content="t('translateEmail')">
         <Icon class="icon" @click="openTranslation" icon="material-symbols:translate-rounded" width="20" height="20" />
       </el-tooltip>
     </div>
     <div></div>
     <el-scrollbar class="scrollbar">
       <div class="container">
+        <template v-if="email">
         <div class="email-title">
           <span class="motion-title">{{ email.subject }}</span>
         </div>
@@ -37,18 +38,18 @@
             <el-alert v-if="email.status === 4" :closable="false" :title="$t('complained')" class="email-msg" type="warning" show-icon />
             <el-alert v-if="email.status === 5" :closable="false" :title="$t('delayed')" class="email-msg" type="warning" show-icon />
           </div>
-          <el-scrollbar class="htm-scrollbar motion-body" :class="email.attList.length === 0 ? 'bottom-distance' : ''">
+          <el-scrollbar class="htm-scrollbar motion-body" :class="attachments.length === 0 ? 'bottom-distance' : ''">
             <ShadowHtml class="shadow-html" :html="formatImage(email.content)" v-if="email.content" />
             <pre v-else class="email-text" >{{email.text}}</pre>
           </el-scrollbar>
-          <div class="att motion-attachments" v-if="email.attList.length > 0">
+          <div class="att motion-attachments" v-if="attachments.length > 0">
             <div class="att-title">
               <span>{{$t('attachments')}}</span>
-              <span>{{$t('attCount',{total: email.attList.length})}}</span>
+              <span>{{$t('attCount',{total: attachments.length})}}</span>
             </div>
             <div class="att-box">
 
-              <div class="att-item" v-for="att in email.attList" :key="att.attId">
+              <div class="att-item" v-for="att in attachments" :key="att.attId">
                 <div class="att-icon" @click="showImage(att.key)">
                   <Icon v-bind="getIconByName(att.filename)" />
                 </div>
@@ -66,6 +67,8 @@
             </div>
           </div>
         </div>
+        </template>
+        <el-empty v-else :description="$t('noMessagesFound')" />
       </div>
     </el-scrollbar>
     <TranslationDialog ref="translationDialogRef" />
@@ -79,7 +82,7 @@
 </template>
 <script setup>
 import ShadowHtml from '@/components/shadow-html/index.vue'
-import {nextTick, reactive, ref, watch, onMounted, onUnmounted} from "vue";
+import {computed, nextTick, reactive, ref, watch, onMounted, onUnmounted} from "vue";
 import {useRouter} from 'vue-router'
 import {ElMessage, ElMessageBox} from 'element-plus'
 import {emailDelete, emailPermanentDelete, emailRead} from "@/request/email.js";
@@ -104,8 +107,9 @@ const settingStore = useSettingStore();
 const accountStore = useAccountStore();
 const emailStore = useEmailStore();
 const router = useRouter()
-const email = emailStore.contentData.email
-const isRecycle = emailStore.contentData.delType === 'recycle'
+const email = computed(() => emailStore.contentData.email)
+const isRecycle = computed(() => emailStore.contentData.delType === 'recycle')
+const attachments = computed(() => email.value?.attList || [])
 const showPreview = ref(false)
 const srcList = reactive([])
 const contentRoot = ref(null)
@@ -118,22 +122,12 @@ watch(() => accountStore.currentAccountId, () => {
 })
 
 onMounted(() => {
-  if (emailStore.contentData.showUnread && email.unread === EmailUnreadEnum.UNREAD) {
-    email.unread = EmailUnreadEnum.READ;
-    emailRead([email.emailId]);
-  }
-  if (!reduceMotion()) {
-    nextTick(() => {
-      const root = contentRoot.value
-      contentTimeline = gsap.timeline({ defaults: { ease: 'power2.out' } })
-        .from(root.querySelector('.motion-title'), { autoAlpha: 0, y: 14, duration: 0.34 })
-        .from(root.querySelector('.motion-sender'), { autoAlpha: 0, y: 10, duration: 0.28 }, '-=0.12')
-        .from(root.querySelector('.motion-body'), { autoAlpha: 0, y: 8, duration: 0.34 }, '-=0.1')
-      const attachments = root.querySelector('.motion-attachments')
-      if (attachments) contentTimeline.from(attachments, { autoAlpha: 0, y: 8, duration: 0.26 }, '-=0.12')
-    })
-  }
+  initializeEmail(email.value)
 })
+
+watch(email, (currentEmail) => {
+  initializeEmail(currentEmail)
+}, { flush: 'post' })
 
 onUnmounted(() => {
   emailStore.contentData.showUnread = false;
@@ -141,19 +135,51 @@ onUnmounted(() => {
 })
 
 function openReply() {
-  uiStore.writerRef.openReply(email)
+  if (email.value) uiStore.writerRef.openReply(email.value)
 }
 
 function openForward() {
-  uiStore.writerRef.openForward(email)
+  if (email.value) uiStore.writerRef.openForward(email.value)
 }
 
 function openTranslation() {
-  translationDialogRef.value?.openEmail(email)
+  if (email.value) translationDialogRef.value?.openEmail(email.value)
+}
+
+function initializeEmail(currentEmail) {
+  if (!currentEmail) return
+
+  if (emailStore.contentData.showUnread && currentEmail.unread === EmailUnreadEnum.UNREAD) {
+    currentEmail.unread = EmailUnreadEnum.READ
+    emailRead([currentEmail.emailId])
+  }
+
+  if (reduceMotion()) return
+
+  nextTick(() => {
+    const root = contentRoot.value
+    const title = root?.querySelector('.motion-title')
+    const sender = root?.querySelector('.motion-sender')
+    const body = root?.querySelector('.motion-body')
+    if (!title || !sender || !body) return
+
+    contentTimeline?.kill()
+    contentTimeline = gsap.timeline({ defaults: { ease: 'power2.out' } })
+      .from(title, { autoAlpha: 0, y: 14, duration: 0.34 })
+      .from(sender, { autoAlpha: 0, y: 10, duration: 0.28 }, '-=0.12')
+      .from(body, { autoAlpha: 0, y: 8, duration: 0.34 }, '-=0.1')
+    const attachments = root.querySelector('.motion-attachments')
+    if (attachments) contentTimeline.from(attachments, { autoAlpha: 0, y: 8, duration: 0.26 }, '-=0.12')
+  })
 }
 
 function toMessage(message) {
-  return  message ? JSON.parse(message).message : '';
+  if (!message) return ''
+  try {
+    return JSON.parse(message).message || message
+  } catch {
+    return message
+  }
 }
 
 function formatImage(content) {
@@ -175,32 +201,38 @@ function isImage(filename) {
 }
 
 function formateReceive(recipient) {
-  recipient = JSON.parse(recipient)
-  return recipient.map(item => item.address).join(', ')
+  try {
+    return JSON.parse(recipient || '[]').map(item => item.address).filter(Boolean).join(', ')
+  } catch {
+    return ''
+  }
 }
 
 function changeStar() {
-  if (email.isStar) {
-    email.isStar = 0;
-    starCancel(email.emailId).then(() => {
-      email.isStar = 0;
-      emailStore.cancelStarEmailId = email.emailId
+  const currentEmail = email.value
+  if (!currentEmail) return
+
+  if (currentEmail.isStar) {
+    currentEmail.isStar = 0;
+    starCancel(currentEmail.emailId).then(() => {
+      currentEmail.isStar = 0;
+      emailStore.cancelStarEmailId = currentEmail.emailId
       setTimeout(() => emailStore.cancelStarEmailId = 0)
-      emailStore.starScroll?.deleteEmail([email.emailId])
+      emailStore.starScroll?.deleteEmail([currentEmail.emailId])
     }).catch((e) => {
       console.error(e)
-      email.isStar = 1;
+      currentEmail.isStar = 1;
     })
   } else {
-    email.isStar = 1;
-    starAdd(email.emailId).then(() => {
-      email.isStar = 1;
-      emailStore.addStarEmailId = email.emailId
+    currentEmail.isStar = 1;
+    starAdd(currentEmail.emailId).then(() => {
+      currentEmail.isStar = 1;
+      emailStore.addStarEmailId = currentEmail.emailId
       setTimeout(() => emailStore.addStarEmailId = 0)
-      emailStore.starScroll?.addItem(email)
+      emailStore.starScroll?.addItem(currentEmail)
     }).catch((e) => {
       console.error(e)
-      email.isStar = 0;
+      currentEmail.isStar = 0;
     })
   }
 }
@@ -210,34 +242,37 @@ const handleBack = () => {
 }
 
 const handleDelete = () => {
-  ElMessageBox.confirm(isRecycle ? t('permanentDeleteOneConfirm') : t('moveToRecycleConfirm'), {
-    confirmButtonText: isRecycle ? t('permanentDelete') : t('confirm'),
+  const currentEmail = email.value
+  if (!currentEmail) return
+
+  ElMessageBox.confirm(isRecycle.value ? t('permanentDeleteOneConfirm') : t('moveToRecycleConfirm'), {
+    confirmButtonText: isRecycle.value ? t('permanentDelete') : t('confirm'),
     cancelButtonText: t('cancel'),
-    type: isRecycle ? 'error' : 'warning'
+    type: isRecycle.value ? 'error' : 'warning'
   }).then(() => {
     if (emailStore.contentData.delType === 'logic') {
-      emailDelete(email.emailId).then(() => {
+      emailDelete(currentEmail.emailId).then(() => {
         ElMessage({
           message: t('movedToRecycle'),
           type: 'success',
           plain: true,
         })
-        emailStore.deleteIds = [email.emailId]
+        emailStore.deleteIds = [currentEmail.emailId]
       })
-    } else if (isRecycle) {
-      emailPermanentDelete([email.emailId]).then(() => {
+    } else if (isRecycle.value) {
+      emailPermanentDelete([currentEmail.emailId]).then(() => {
         ElMessage({ message: t('permanentDeleteSuccess'), type: 'success', plain: true })
-        emailStore.deleteIds = [email.emailId]
+        emailStore.deleteIds = [currentEmail.emailId]
       })
     } else  {
 
-      allEmailDelete(email.emailId).then(() => {
+      allEmailDelete(currentEmail.emailId).then(() => {
         ElMessage({
           message: t('delSuccessMsg'),
           type: 'success',
           plain: true,
         })
-        emailStore.deleteIds = [email.emailId]
+        emailStore.deleteIds = [currentEmail.emailId]
       })
     }
 
