@@ -12,7 +12,8 @@ export const useEmailStore = defineStore('email', {
             delType: null,
             showStar: true,
             showReply: true,
-            showUnread: false
+            showUnread: false,
+            showTranslation: false
         },
         sendScroll: null,
     }),

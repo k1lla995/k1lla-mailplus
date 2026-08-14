@@ -99,6 +99,7 @@ function jumpContent(email) {
   emailStore.contentData.delType = 'recycle'
   emailStore.contentData.showStar = false
   emailStore.contentData.showReply = false
+  emailStore.contentData.showTranslation = false
   emailStore.contentData.showUnread = false
   router.push('/message')
 }

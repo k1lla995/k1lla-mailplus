@@ -213,6 +213,7 @@ function openMessage(message) {
   emailStore.contentData.delType = 'logic'
   emailStore.contentData.showStar = true
   emailStore.contentData.showReply = true
+  emailStore.contentData.showTranslation = false
   emailStore.contentData.showUnread = true
   historyOpen.value = false
   router.push('/message')

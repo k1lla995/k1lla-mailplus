@@ -9,6 +9,9 @@
       </span>
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openReply" icon="la:reply" width="21" height="21" />
       <Icon class="icon" v-if="emailStore.contentData.showReply" v-perm="'email:send'"  @click="openForward" icon="iconoir:arrow-up-right" width="20" height="20" />
+      <el-tooltip v-if="emailStore.contentData.showTranslation" :content="t('translateEmail')">
+        <Icon class="icon" @click="openTranslation" icon="material-symbols:translate-rounded" width="20" height="20" />
+      </el-tooltip>
     </div>
     <div></div>
     <el-scrollbar class="scrollbar">
@@ -65,6 +68,7 @@
         </div>
       </div>
     </el-scrollbar>
+    <TranslationDialog ref="translationDialogRef" />
     <el-image-viewer
         v-if="showPreview"
         :url-list="srcList"
@@ -93,6 +97,7 @@ import {useUiStore} from "@/store/ui.js";
 import {useI18n} from "vue-i18n";
 import {EmailUnreadEnum} from "@/enums/email-enum.js";
 import { gsap, reduceMotion } from '@/utils/motion.js'
+import TranslationDialog from '@/components/translation-dialog/index.vue'
 
 const uiStore = useUiStore();
 const settingStore = useSettingStore();
@@ -104,6 +109,7 @@ const isRecycle = emailStore.contentData.delType === 'recycle'
 const showPreview = ref(false)
 const srcList = reactive([])
 const contentRoot = ref(null)
+const translationDialogRef = ref(null)
 let contentTimeline
 
 const { t } = useI18n()
@@ -140,6 +146,10 @@ function openReply() {
 
 function openForward() {
   uiStore.writerRef.openForward(email)
+}
+
+function openTranslation() {
+  translationDialogRef.value?.openEmail(email)
 }
 
 function toMessage(message) {
