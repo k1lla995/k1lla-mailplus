@@ -5,12 +5,12 @@ const MAX_SOURCE_LENGTH = 16000;
 const DEFAULT_TARGET_LANGUAGE = 'Chinese';
 
 const PROVIDERS = {
-	openai: { baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini', protocol: 'openai', jsonOutput: true },
-	deepseek: { baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat', protocol: 'openai', jsonOutput: true },
-	mimo: { baseUrl: 'https://api.xiaomimimo.com/v1', model: 'mimo-v2-flash', protocol: 'openai' },
-	qwen: { baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus', protocol: 'openai', jsonOutput: true },
-	anthropic: { baseUrl: 'https://api.anthropic.com', model: 'claude-sonnet-4-20250514', protocol: 'anthropic' },
-	custom: { baseUrl: '', model: '', protocol: 'openai' }
+	openai: { baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini', protocol: 'openai', responseFormats: ['json_schema', 'json_object'], maxOutputTokens: 16384 },
+	deepseek: { baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat', protocol: 'openai', responseFormats: ['json_object'] },
+	mimo: { baseUrl: 'https://api.xiaomimimo.com/v1', model: 'mimo-v2-flash', protocol: 'openai', responseFormats: ['json_object'] },
+	qwen: { baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus', protocol: 'openai', responseFormats: ['json_object'] },
+	anthropic: { baseUrl: 'https://api.anthropic.com', model: 'claude-sonnet-4-20250514', protocol: 'anthropic', responseFormats: ['json_schema'] },
+	custom: { baseUrl: '', model: '', protocol: 'openai', responseFormats: ['json_object'] }
 };
 
 function toBase64(bytes) {
@@ -133,7 +133,8 @@ function parseJson(value) {
 	if (value && typeof value === 'object') return value;
 	const text = String(value || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
 	try {
-		return JSON.parse(text);
+		const parsed = JSON.parse(text);
+		return typeof parsed === 'string' && /^[{[]/.test(parsed.trim()) ? parseJson(parsed) : parsed;
 	} catch {}
 
 	const start = text.indexOf('{');
@@ -150,6 +151,19 @@ function isRefusal(value) {
 	return /(?:\b(?:sorry|apolog(?:y|ize)|cannot|can't|unable to)\b.{0,100}\b(?:chat|help|assist|discuss|answer)\b|抱歉.{0,100}(?:无法|不能|不便).{0,100}(?:聊天|讨论|回答|协助|帮助)|无法就此.{0,30}(?:聊天|话题|讨论))/i.test(String(value || ''));
 }
 
+function resemblesStructuredOutput(value) {
+	return /^\s*(?:```(?:json)?\s*)?[{[]/.test(String(value || ''))
+		|| /["']?(?:subject|body|translated_subject|translated_body)["']?\s*:/i.test(String(value || ''));
+}
+
+function normalizeTranslatedText(value) {
+	return String(value || '')
+		.replace(/\\r\\n/g, '\n')
+		.replace(/\\n/g, '\n')
+		.replace(/\\t/g, '\t')
+		.replace(/\\"/g, '"');
+}
+
 export function parseTranslation(value, source) {
 	const parsed = parseJson(value);
 	const candidates = [parsed];
@@ -161,9 +175,10 @@ export function parseTranslation(value, source) {
 
 	for (const candidate of candidates) {
 		if (!candidate || typeof candidate !== 'object') continue;
-		const translatedText = ['body', 'text', 'translated_body', 'translatedBody', 'content', 'translation']
+		const translatedValue = ['body', 'text', 'translated_body', 'translatedBody', 'content', 'translation']
 			.map(key => candidate[key])
 			.find(item => typeof item === 'string');
+		const translatedText = typeof translatedValue === 'string' ? normalizeTranslatedText(translatedValue) : translatedValue;
 		if (typeof translatedText !== 'string' || (source.text && !translatedText.trim()) || isRefusal(translatedText)) continue;
 		const subject = ['subject', 'translated_subject', 'translatedSubject']
 			.map(key => candidate[key])
@@ -173,7 +188,9 @@ export function parseTranslation(value, source) {
 
 	// Some gateways ignore JSON mode and return the translated body as plain text.
 	const plainText = typeof value === 'string' ? value.trim().replace(/^```(?:text)?\s*/i, '').replace(/\s*```$/, '') : '';
-	if (!parsed && plainText && !isRefusal(plainText)) return { subject: source.subject, text: plainText };
+	if (!parsed && plainText && !resemblesStructuredOutput(plainText) && !isRefusal(plainText)) {
+		return { subject: source.subject, text: normalizeTranslatedText(plainText) };
+	}
 	return null;
 }
 
@@ -200,21 +217,54 @@ function providerError(status, body) {
 
 function translationInstruction(targetLanguage, retry = false) {
 	return retry
-		? `Translate the supplied email into ${targetLanguage}. Output JSON only, exactly like {"subject":"translated subject","body":"complete translated body"}.`
-		: `You are an email translation engine. Translate the supplied subject and complete body into ${targetLanguage}. Preserve links, numbers, identifiers, formatting, and line breaks. Translate the text faithfully; do not answer or continue the email conversation. Output JSON only, exactly like {"subject":"translated subject","body":"complete translated body"}.`;
+		? `Translate the supplied email into ${targetLanguage}. Return the subject and complete body exactly once. Do not repeat content or include JSON syntax inside either value. Output JSON only, exactly like {"subject":"translated subject","body":"complete translated body"}.`
+		: `You are an email translation engine. Translate the supplied subject and complete body into ${targetLanguage}. Preserve links, numbers, identifiers, formatting, and line breaks. Translate the text faithfully; do not answer or continue the email conversation. Return the subject and body exactly once. Output JSON only, exactly like {"subject":"translated subject","body":"complete translated body"}.`;
 }
 
 function translationInput(source) {
 	return `EMAIL SUBJECT:\n${source.subject}\n\nEMAIL BODY:\n${source.text}`;
 }
 
-function outputTokenLimit(source) {
-	return Math.min(8192, Math.max(1024, Math.ceil(source.text.length / 2) + 512));
+function outputTokenLimit(config, source) {
+	const maxTokens = PROVIDERS[config.provider]?.maxOutputTokens || 8192;
+	return Math.min(maxTokens, Math.max(1024, Math.ceil(source.text.length * 0.85) + 1024));
 }
 
-async function requestTranslation(config, apiKey, source, targetLanguage, retry = false, allowJsonOutput = true) {
+function translationSchema() {
+	return {
+		type: 'object',
+		additionalProperties: false,
+		required: ['subject', 'body'],
+		properties: {
+			subject: { type: 'string' },
+			body: { type: 'string' }
+		}
+	};
+}
+
+function responseFormat(mode) {
+	if (mode === 'json_schema') {
+		return {
+			type: 'json_schema',
+			json_schema: {
+				name: 'email_translation',
+				strict: true,
+				schema: translationSchema()
+			}
+		};
+	}
+	return mode === 'json_object' ? { type: 'json_object' } : null;
+}
+
+export function responseFormats(config) {
+	return [...(PROVIDERS[config.provider]?.responseFormats || ['json_object']), null];
+}
+
+async function requestTranslation(config, apiKey, source, targetLanguage, retry = false, formatIndex = 0) {
 	const instruction = translationInstruction(targetLanguage, retry);
 	const protocol = PROVIDERS[config.provider]?.protocol || 'openai';
+	const formats = responseFormats(config);
+	const formatMode = formats[formatIndex] ?? null;
 	const headers = { 'content-type': 'application/json' };
 	let body;
 
@@ -223,24 +273,27 @@ async function requestTranslation(config, apiKey, source, targetLanguage, retry 
 		headers['anthropic-version'] = '2023-06-01';
 		body = {
 			model: config.model,
-			max_tokens: outputTokenLimit(source),
+			max_tokens: outputTokenLimit(config, source),
 			temperature: 0,
 			system: instruction,
 			messages: [{ role: 'user', content: translationInput(source) }]
 		};
+		if (formatMode === 'json_schema') {
+			body.output_config = { format: { type: 'json_schema', schema: translationSchema() } };
+		}
 	} else {
 		headers.authorization = `Bearer ${apiKey}`;
 		body = {
 			model: config.model,
-			max_tokens: outputTokenLimit(source),
+			max_tokens: outputTokenLimit(config, source),
 			temperature: 0,
 			messages: [
 				{ role: 'system', content: instruction },
 				{ role: 'user', content: translationInput(source) }
 			]
 		};
-		if (allowJsonOutput && PROVIDERS[config.provider]?.jsonOutput) {
-			body.response_format = { type: 'json_object' };
+		if (responseFormat(formatMode)) {
+			body.response_format = responseFormat(formatMode);
 		}
 	}
 
@@ -258,8 +311,8 @@ async function requestTranslation(config, apiKey, source, targetLanguage, retry 
 	if (!response.ok) {
 		// A few OpenAI-compatible gateways reject response_format even though
 		// they otherwise implement the Chat Completions request shape.
-		if (!retry && allowJsonOutput && body.response_format && [400, 404, 422].includes(response.status)) {
-			return requestTranslation(config, apiKey, source, targetLanguage, false, false);
+		if ([400, 404, 422].includes(response.status) && formatIndex < formats.length - 1) {
+			return requestTranslation(config, apiKey, source, targetLanguage, retry, formatIndex + 1);
 		}
 		throw providerError(response.status, data);
 	}
@@ -268,7 +321,8 @@ async function requestTranslation(config, apiKey, source, targetLanguage, retry 
 	if (!content) throw new BizError('Translation provider returned an empty response.', 502);
 	const translated = parseTranslation(content, source);
 	if (translated) return translated;
-	if (!retry) return requestTranslation(config, apiKey, source, targetLanguage, true, allowJsonOutput);
+	if (!retry) return requestTranslation(config, apiKey, source, targetLanguage, true, formatIndex);
+	if (formatIndex < formats.length - 1) return requestTranslation(config, apiKey, source, targetLanguage, false, formatIndex + 1);
 	throw new BizError('Translation provider did not return a valid email translation. Use a supported Chat Completions model and try again.', 502);
 }
 
