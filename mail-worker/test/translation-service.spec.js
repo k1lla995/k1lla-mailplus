@@ -23,6 +23,11 @@ describe('translation response parsing', () => {
 		expect(parseTranslation('第一行\\n第二行', source)?.text).toBe('第一行\n第二行');
 	});
 
+	it('rejects the common English refusal fallback', () => {
+		expect(parseTranslation("Sorry, I can't respond to that. Let's try another topic.", source)).toBeNull();
+		expect(parseTranslation('{"subject":"Welcome","body":"很抱歉，我似乎无法对此做出响应。让我们尝试其他主题"}', source)).toBeNull();
+	});
+
 	it('decodes a JSON-encoded JSON object but rejects malformed JSON fragments', () => {
 		expect(parseTranslation(JSON.stringify('{"subject":"欢迎","body":"请验证您的帐户。"}'), source)).toEqual({
 			subject: '欢迎',
@@ -33,6 +38,7 @@ describe('translation response parsing', () => {
 
 	it('does not pass a provider refusal through as email content', () => {
 		expect(parseTranslation('抱歉，我似乎无法就此话题进行聊天。让我们尝试其他主题。', source)).toBeNull();
+		expect(parseTranslation('很抱歉，我似乎无法对此做出响应。让我们尝试其他主题', source)).toBeNull();
 		expect(parseTranslation('{"subject":"欢迎","body":"抱歉，我似乎无法就此话题进行聊天。"}', source)).toBeNull();
 	});
 
