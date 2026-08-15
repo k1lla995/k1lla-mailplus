@@ -2,6 +2,7 @@ import BizError from '../error/biz-error';
 import emailUtils from '../utils/email-utils';
 
 const MAX_SOURCE_LENGTH = 16000;
+const TRANSLATION_CHUNK_LENGTH = 4000;
 const DEFAULT_TARGET_LANGUAGE = 'Chinese';
 
 const PROVIDERS = {
@@ -103,6 +104,13 @@ function publicConfig(row) {
 	};
 }
 
+function textFromPlain(value) {
+	return emailUtils.formatText(typeof value === 'string' ? value : String(value || ''))
+		.replace(/[ \t\f\v]+/g, ' ')
+		.replace(/\n{3,}/g, '\n')
+		.trim();
+}
+
 function textFromHtml(value) {
 	return emailUtils.htmlToText(typeof value === 'string' ? value : String(value || ''))
 		.replace(/[ \t\f\v]+/g, ' ')
@@ -110,10 +118,21 @@ function textFromHtml(value) {
 		.trim();
 }
 
+function normalizeContent(value) {
+	const raw = typeof value === 'string' ? value : String(value || '');
+	if (!raw.trim()) return '';
+	// Do not parse plain-text mail as HTML: angle brackets in code, URLs, or
+	// comparison expressions would otherwise disappear before translation.
+	return /<\/?(?:html|body|div|span|p|br|table|tr|td|a|img|blockquote|style|pre|section|article|main|header|footer|ul|ol|li|h[1-6]|strong|em|font)\b/i.test(raw)
+		? textFromHtml(raw)
+		: textFromPlain(raw);
+}
+
 function normalizeSource(subject, content, alternateContent = '') {
-	const plainText = [content, alternateContent]
-		.map(textFromHtml)
-		.sort((left, right) => right.length - left.length)[0] || '';
+	const candidates = [content, alternateContent].map(normalizeContent);
+	// PostalMime provides a complete text part for multipart mail. Prefer it
+	// when present; HTML often contains quoted replies or hidden duplicate nodes.
+	const plainText = candidates.find(Boolean) || '';
 	const text = plainText.slice(0, MAX_SOURCE_LENGTH);
 	const cleanSubject = String(subject || '').trim().slice(0, 1000);
 	if (!cleanSubject && !text) {
@@ -161,15 +180,63 @@ function isRefusal(value) {
 
 function resemblesStructuredOutput(value) {
 	return /^\s*(?:```(?:json)?\s*)?[{[]/.test(String(value || ''))
-		|| /["']?(?:subject|body|translated_subject|translated_body)["']?\s*:/i.test(String(value || ''));
+		|| /^\s*(?:```(?:json)?\s*)?["']?(?:subject|body|translated_subject|translated_body)["']?\s*:/i.test(String(value || ''));
 }
 
 function normalizeTranslatedText(value) {
-	return String(value || '')
+	const text = String(value || '')
 		.replace(/\\r\\n/g, '\n')
 		.replace(/\\n/g, '\n')
 		.replace(/\\t/g, '\t')
 		.replace(/\\"/g, '"');
+
+	// Some models repeat the complete response when the source is long. Only
+	// remove an exact doubled response; repeated lines in a real email are
+	// meaningful and must be preserved.
+	const lines = text.trim().split('\n');
+	const dedupedLines = [];
+	for (const line of lines) {
+		const previous = dedupedLines.at(-1);
+		// Long adjacent lines are usually a model repetition; keep short lines
+		// untouched because lists and headers often intentionally repeat.
+		if (previous && line.trim().length >= 20 && line.trim() === previous.trim()) continue;
+		dedupedLines.push(line);
+	}
+	const result = dedupedLines.join('\n').trim();
+	const doubled = result.match(/^(.{20,})\n\1$/s);
+	if (doubled) return doubled[1].trim();
+	return result;
+}
+
+function splitTranslationText(text, maxLength = TRANSLATION_CHUNK_LENGTH) {
+	const value = String(text || '');
+	if (value.length <= maxLength) return value ? [value] : [''];
+
+	const chunks = [];
+	let current = '';
+	const push = () => {
+		if (current) chunks.push(current);
+		current = '';
+	};
+	for (const line of value.split('\n')) {
+		const candidate = current ? `${current}\n${line}` : line;
+		if (current && candidate.length > maxLength) push();
+		if (line.length <= maxLength) {
+			current = current ? `${current}\n${line}` : line;
+			continue;
+		}
+		for (let offset = 0; offset < line.length; offset += maxLength) {
+			const part = line.slice(offset, offset + maxLength);
+			if (part.length === maxLength) chunks.push(part);
+			else current = part;
+		}
+	}
+	push();
+	return chunks.filter(Boolean);
+}
+
+export function splitTranslationChunks(text, maxLength = TRANSLATION_CHUNK_LENGTH) {
+	return splitTranslationText(text, maxLength);
 }
 
 export function parseTranslation(value, source) {
@@ -231,7 +298,7 @@ function translationInstruction(targetLanguage, retry = false) {
 }
 
 function translationInput(source, retry = false) {
-	if (retry) return source.text;
+	if (retry) return `<email-source>${JSON.stringify({ body: source.text })}</email-source>`;
 	const payload = JSON.stringify({ subject: source.subject, body: source.text });
 	return `<email-source>${payload}</email-source>`;
 }
@@ -271,7 +338,21 @@ export function responseFormats(config) {
 	return [...(PROVIDERS[config.provider]?.responseFormats || ['json_object']), null];
 }
 
-async function requestTranslation(config, apiKey, source, targetLanguage, retry = false, formatIndex = 0) {
+async function requestTranslation(config, apiKey, source, targetLanguage, retry = false, formatIndex = 0, chunked = false) {
+	if (!retry && !chunked && source.text.length > TRANSLATION_CHUNK_LENGTH) {
+		const chunks = splitTranslationText(source.text);
+		const translatedChunks = await Promise.all(chunks.map(chunk => requestTranslation(
+				config,
+				apiKey,
+				{ subject: source.subject, text: chunk },
+				targetLanguage,
+				false,
+				0,
+				true
+			)));
+		return { subject: translatedChunks.length ? translatedChunks[0].subject : source.subject, text: normalizeTranslatedText(translatedChunks.map(item => item.text).join('\n')) };
+	}
+
 	const instruction = translationInstruction(targetLanguage, retry);
 	const protocol = PROVIDERS[config.provider]?.protocol || 'openai';
 	const formats = responseFormats(config);
@@ -332,8 +413,13 @@ async function requestTranslation(config, apiKey, source, targetLanguage, retry 
 	if (!content) throw new BizError('Translation provider returned an empty response.', 502);
 	const translated = parseTranslation(content, source);
 	if (translated) return translated;
-	if (!retry) return requestTranslation(config, apiKey, source, targetLanguage, true, formats.length - 1);
-	if (formatIndex < formats.length - 1) return requestTranslation(config, apiKey, source, targetLanguage, false, formatIndex + 1);
+	if (!retry) {
+		if (formatIndex < formats.length - 1) {
+			return requestTranslation(config, apiKey, source, targetLanguage, false, formatIndex + 1);
+		}
+		return requestTranslation(config, apiKey, source, targetLanguage, true, formats.length - 1);
+	}
+	if (formatIndex < formats.length - 1) return requestTranslation(config, apiKey, source, targetLanguage, true, formatIndex + 1);
 	throw new BizError('Translation provider did not return a valid email translation. Use a supported Chat Completions model and try again.', 502);
 }
 

@@ -204,6 +204,7 @@ const translationResult = ref(null)
 const translationTargetLanguage = ref('Chinese')
 const translationMode = ref('append')
 const translationLanguages = ['Chinese', 'English', 'Japanese', 'Korean', 'Spanish', 'French', 'German']
+const translationAppendMarker = '<!-- mailplus-translation -->'
 
 async function openContacts() {
   showContacts.value = true
@@ -673,7 +674,7 @@ async function openTranslation() {
 }
 
 async function translateCompose() {
-  const content = editor.value.getContent?.() || form.content
+  const content = stripAppendedTranslation(editor.value.getContent?.() || form.content)
   if (!content || translationLoading.value) return
 
   translationLoading.value = true
@@ -705,11 +706,11 @@ async function applyTranslation() {
     }
   }
 
-  const original = editor.value.getContent?.() || form.content
+  const original = stripAppendedTranslation(editor.value.getContent?.() || form.content)
   const translatedHtml = textToHtml(translationResult.value.text)
   const nextContent = translationMode.value === 'replace'
     ? translatedHtml
-    : `${original}<hr><div><strong>${escapeHtml(t('translatedContent'))}</strong></div>${translatedHtml}`
+    : `${original}${translationAppendMarker}<hr><div><strong>${escapeHtml(t('translatedContent'))}</strong></div>${translatedHtml}`
 
   if (translationMode.value === 'replace' && translationResult.value.subject) {
     form.subject = translationResult.value.subject
@@ -725,6 +726,10 @@ function escapeHtml(value) {
 
 function textToHtml(value) {
   return `<div style="white-space: pre-wrap;word-break: break-word">${escapeHtml(value)}</div>`
+}
+
+function stripAppendedTranslation(value) {
+  return String(value || '').replace(new RegExp(`${translationAppendMarker}[\\s\\S]*$`), '').trim()
 }
 
 </script>
