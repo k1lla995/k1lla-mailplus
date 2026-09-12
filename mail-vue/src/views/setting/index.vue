@@ -125,7 +125,14 @@
           <el-input v-model.trim="translationForm.baseUrl" placeholder="https://api.example.com/v1"/>
         </el-form-item>
         <el-form-item :label="$t('translationModel')">
-          <el-input v-model.trim="translationForm.model"/>
+          <div class="translation-model-control">
+            <el-select v-model="translationForm.model" filterable allow-create default-first-option>
+              <el-option v-for="model in translationModelOptions" :key="model" :label="model" :value="model"/>
+            </el-select>
+            <el-button :loading="modelsLoading" :title="$t('translationLoadModels')" @click="loadTranslationModels">
+              <Icon icon="ion:reload" width="16" height="16"/>
+            </el-button>
+          </div>
         </el-form-item>
         <el-form-item :label="$t('translationApiKey')">
           <el-input v-model="translationForm.apiKey" type="password" show-password autocomplete="new-password" :placeholder="translationForm.hasApiKey ? $t('translationKeySaved') : ''"/>
@@ -154,7 +161,7 @@ import {useAccountStore} from "@/store/account.js";
 import {useI18n} from "vue-i18n";
 import {useSettingStore} from "@/store/setting.js";
 import {Icon} from '@iconify/vue'
-import {translationConfig, translationSaveConfig} from '@/request/translation.js'
+import {translationConfig, translationModels as fetchTranslationModels, translationSaveConfig} from '@/request/translation.js'
 
 const { t } = useI18n()
 const accountStore = useAccountStore()
@@ -170,19 +177,21 @@ const bindingBotLink = ref('')
 const telegramLoading = ref(false)
 const translationSettingsShow = ref(false)
 const translationLoading = ref(false)
+const modelsLoading = ref(false)
+const translationModelOptions = ref([])
 const translationLanguages = ['Chinese', 'English', 'Japanese', 'Korean', 'Spanish', 'French', 'German']
 const translationProviders = [
-  { value: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
-  { value: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat' },
-  { value: 'mimo', label: 'Xiaomi MiMo', baseUrl: 'https://api.xiaomimimo.com/v1', model: 'mimo-v2-flash' },
-  { value: 'qwen', label: 'Tongyi Qianwen', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus' },
-  { value: 'anthropic', label: 'Anthropic', baseUrl: 'https://api.anthropic.com', model: 'claude-sonnet-4-20250514' },
+  { value: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: '' },
+  { value: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: '' },
+  { value: 'mimo', label: 'Xiaomi MiMo', baseUrl: 'https://api.xiaomimimo.com/v1', model: '' },
+  { value: 'qwen', label: 'Tongyi Qianwen', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: '' },
+  { value: 'anthropic', label: 'Anthropic', baseUrl: 'https://api.anthropic.com', model: '' },
   { value: 'custom', label: 'OpenAI-compatible API', baseUrl: '', model: '' }
 ]
 const translationForm = reactive({
   provider: 'openai',
   baseUrl: 'https://api.openai.com/v1',
-  model: 'gpt-4o-mini',
+  model: '',
   apiKey: '',
   defaultTargetLanguage: 'Chinese',
   hasApiKey: false
@@ -261,6 +270,21 @@ function applyProviderDefaults(provider) {
   if (!current) return
   translationForm.baseUrl = current.baseUrl
   translationForm.model = current.model
+  translationModelOptions.value = []
+}
+
+async function loadTranslationModels() {
+  if (modelsLoading.value) return
+  modelsLoading.value = true
+  try {
+    const data = await fetchTranslationModels({ provider: translationForm.provider, baseUrl: translationForm.baseUrl, model: translationForm.model, apiKey: translationForm.apiKey })
+    translationModelOptions.value = Array.isArray(data?.models) ? data.models : []
+    if (!translationModelOptions.value.length) ElMessage({ message: t('translationNoModels'), type: 'warning', plain: true })
+  } catch (error) {
+    ElMessage({ message: error?.message || t('translationModelsFailed'), type: 'error', plain: true })
+  } finally {
+    modelsLoading.value = false
+  }
 }
 
 async function saveTranslationSettings() {
@@ -609,5 +633,13 @@ function submitPwd() {
   color: var(--el-text-color-secondary);
   font-size: 12px;
   line-height: 1.5;
+}
+
+.translation-model-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  .el-select { flex: 1; }
 }
 </style>

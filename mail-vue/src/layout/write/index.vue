@@ -115,7 +115,8 @@
           <div class="translation-label">{{ t('translatedSubject') }}</div>
           <div class="translation-subject">{{ translationResult.subject || '-' }}</div>
           <div class="translation-label">{{ t('translatedContent') }}</div>
-          <pre>{{ translationResult.text }}</pre>
+          <div v-if="translationResult.html" class="translation-html" v-html="translationPreviewHtml"></div>
+          <pre v-else>{{ translationResult.text }}</pre>
         </div>
       </template>
       <el-empty v-else-if="!translationLoading" :description="t('translationNoResult')" :image-size="96"/>
@@ -128,7 +129,7 @@
 </template>
 <script setup>
 import tinyEditor from '@/components/tiny-editor/index.vue'
-import {h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw} from "vue";
+import {computed, h, nextTick, onMounted, onUnmounted, reactive, ref, toRaw} from "vue";
 import {Icon} from "@iconify/vue";
 import {useUserStore} from "@/store/user.js";
 import {emailSend} from "@/request/email.js";
@@ -149,6 +150,7 @@ import router from "@/router/index.js";
 import {ElMessageBox} from "element-plus";
 import {contactList, recentRecipientList} from "@/request/contact.js";
 import {translationConfig, translationTranslate} from '@/request/translation.js'
+import {sanitizeEmailHtml} from '@/utils/sanitize-html.js'
 
 defineExpose({
   open,
@@ -205,6 +207,7 @@ const translationTargetLanguage = ref('Chinese')
 const translationMode = ref('append')
 const translationLanguages = ['Chinese', 'English', 'Japanese', 'Korean', 'Spanish', 'French', 'German']
 const translationAppendMarker = '<!-- mailplus-translation -->'
+const translationPreviewHtml = computed(() => sanitizeEmailHtml(translationResult.value?.html || ''))
 
 async function openContacts() {
   showContacts.value = true
@@ -707,7 +710,7 @@ async function applyTranslation() {
   }
 
   const original = stripAppendedTranslation(editor.value.getContent?.() || form.content)
-  const translatedHtml = textToHtml(translationResult.value.text)
+  const translatedHtml = translationResult.value.html || textToHtml(translationResult.value.text)
   const nextContent = translationMode.value === 'replace'
     ? translatedHtml
     : `${original}${translationAppendMarker}<hr><div><strong>${escapeHtml(t('translatedContent'))}</strong></div>${translatedHtml}`
@@ -974,6 +977,23 @@ function stripAppendedTranslation(value) {
   overflow-wrap: anywhere;
   font-family: inherit;
   line-height: 1.65;
+}
+
+.translation-html {
+  max-height: min(360px, 45vh);
+  overflow: auto;
+  color: #303133;
+  background: #fff;
+  line-height: normal;
+}
+
+.translation-html :deep(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.translation-html :deep(table) {
+  max-width: 100%;
 }
 
 @media (max-width: 480px) {
