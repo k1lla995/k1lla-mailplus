@@ -11,6 +11,10 @@ app.put('/translation/config', async c => {
 	return c.json(result.ok(await translationService.saveConfig(c, userContext.getUserId(c), await c.req.json())));
 });
 
+app.post('/translation/models', async c => {
+	return c.json(result.ok(await translationService.listModels(c, userContext.getUserId(c), await c.req.json())));
+});
+
 app.post('/translation/translate', async c => {
 	return c.json(result.ok(await translationService.translate(c, userContext.getUserId(c), await c.req.json())));
 });

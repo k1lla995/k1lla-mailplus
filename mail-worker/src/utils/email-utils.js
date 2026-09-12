@@ -31,11 +31,17 @@ const emailUtils = {
 	htmlToText(content) {
 		if (!content) return ''
 		try {
-			const wrappedContent = content.includes('<body')
+			const wrappedContent = /<(?:html|body)\b/i.test(content)
 				? content
 				: `<!DOCTYPE html><html><body>${content}</body></html>`;
 			const { document } = parseHTML(wrappedContent);
 			document.querySelectorAll('style, script, title').forEach(el => el.remove());
+			document.querySelectorAll('a[href]').forEach(anchor => {
+				const href = String(anchor.getAttribute('href') || '').trim();
+				const label = this.formatText(anchor.innerText || '');
+				if (!href || label === href || label.includes(href)) return;
+				anchor.append(document.createTextNode(label ? ` <${href}>` : href));
+			});
 			let text = document.body.innerText;
 			return this.formatText(text);
 		} catch (e) {
