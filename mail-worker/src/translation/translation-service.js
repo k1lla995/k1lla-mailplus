@@ -4,6 +4,7 @@ import { parseHTML } from 'linkedom';
 
 const MAX_SOURCE_LENGTH = 16000;
 const TRANSLATION_CHUNK_LENGTH = 4000;
+const TRANSLATION_REQUEST_TIMEOUT_MS = 110_000;
 const DEFAULT_TARGET_LANGUAGE = 'Chinese';
 const HTML_CONTENT_PATTERN = /<\/?(?:html|head|body|div|span|p|br|hr|table|thead|tbody|tfoot|tr|td|th|caption|colgroup|col|a|img|blockquote|style|pre|section|article|main|header|footer|ul|ol|li|dl|dt|dd|h[1-6]|strong|em|b|i|u|s|del|ins|small|big|sub|sup|font|center|figure|figcaption|button)\b/i;
 const NON_TRANSLATABLE_TAGS = new Set(['script', 'style', 'title', 'noscript', 'template', 'svg', 'math']);
@@ -57,6 +58,10 @@ async function decryptApiKey(env, value) {
 	} catch {
 		throw new BizError('Saved translation API key cannot be decrypted. Save it again.', 502);
 	}
+}
+
+function normalizeApiKey(value) {
+	return String(value || '').trim().replace(/^Bearer\s+/i, '');
 }
 
 function normalizeBaseUrl(value, provider) {
@@ -426,6 +431,15 @@ function providerError(status, body) {
 	return new BizError(`Translation provider request failed (${status}).`, 502);
 }
 
+function modelsProviderError(status, usedApiKey) {
+	if (status === 401) {
+		throw new BizError(usedApiKey
+			? 'Translation provider rejected the API key for this Base URL (401).'
+			: 'Translation provider requires an API key to load models. Enter the key for this Base URL and reload.', 400);
+	}
+	throw providerError(status, {});
+}
+
 function translationInstruction(targetLanguage, retry = false, segmentMode = false) {
 	if (segmentMode) {
 		const prefix = retry ? 'The previous response was invalid. ' : '';
@@ -589,11 +603,14 @@ async function requestTranslation(config, apiKey, source, targetLanguage, retry 
 
 	let response;
 	const controller = new AbortController();
-	const timeout = setTimeout(() => controller.abort(), 45_000);
+	const timeout = setTimeout(() => controller.abort(), TRANSLATION_REQUEST_TIMEOUT_MS);
 	try {
 		response = await fetch(endpointFor(config), { method: 'POST', headers, body: JSON.stringify(body), signal: controller.signal });
 	} catch {
-		throw new BizError('Translation provider request timed out or could not be reached.', 502);
+		if (controller.signal.aborted) {
+			throw new BizError('Translation provider did not respond within 110 seconds.', 504);
+		}
+		throw new BizError('Translation provider connection failed. Verify the API Base URL and network access.', 502);
 	} finally {
 		clearTimeout(timeout);
 	}
@@ -635,8 +652,8 @@ const translationService = {
 
 		let apiKeyCipher = previous?.api_key_cipher || '';
 		if (input.clearApiKey === true) apiKeyCipher = '';
-		if (typeof input.apiKey === 'string' && input.apiKey.trim()) {
-			apiKeyCipher = await encryptApiKey(c.env, input.apiKey.trim());
+		if (typeof input.apiKey === 'string' && normalizeApiKey(input.apiKey)) {
+			apiKeyCipher = await encryptApiKey(c.env, normalizeApiKey(input.apiKey));
 		}
 		if (!apiKeyCipher) throw new BizError('Translation API key is required.', 400);
 
@@ -654,19 +671,20 @@ const translationService = {
 		input = input && typeof input === 'object' && !Array.isArray(input) ? input : {};
 		const row = await c.env.db.prepare('SELECT provider, base_url, model, default_target_language, api_key_cipher FROM translation_config WHERE user_id = ?').bind(userId).first();
 		const config = normalizeConfig({ provider: input.provider || row?.provider, baseUrl: input.baseUrl || row?.base_url, model: input.model || row?.model });
-		let apiKey = typeof input.apiKey === 'string' && input.apiKey.trim() ? input.apiKey.trim() : '';
-		if (!apiKey && row?.api_key_cipher) apiKey = await decryptApiKey(c.env, row.api_key_cipher);
-		if (!apiKey) throw new BizError('Translation API key is required to load models.', 400);
+		let apiKey = normalizeApiKey(input.apiKey);
+		const savedConfig = row ? publicConfig(row) : null;
+		const canUseSavedKey = savedConfig && savedConfig.provider === config.provider && savedConfig.baseUrl === config.baseUrl;
+		if (!apiKey && canUseSavedKey && row?.api_key_cipher) apiKey = await decryptApiKey(c.env, row.api_key_cipher);
 		const protocol = PROVIDERS[config.provider]?.protocol || 'openai';
 		const headers = protocol === 'anthropic'
-			? { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' }
-			: { accept: 'application/json', authorization: `Bearer ${apiKey}` };
+			? { 'content-type': 'application/json', ...(apiKey ? { 'x-api-key': apiKey } : {}), 'anthropic-version': '2023-06-01' }
+			: { accept: 'application/json', ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}) };
 		let response;
 		try { response = await fetch(modelsEndpointFor(config), { method: 'GET', headers }); } catch {
 			throw new BizError('Translation provider model list could not be reached.', 502);
 		}
 		const data = await response.json().catch(() => ({}));
-		if (!response.ok) throw providerError(response.status, data);
+		if (!response.ok) modelsProviderError(response.status, Boolean(apiKey));
 		const items = Array.isArray(data?.data) ? data.data : Array.isArray(data?.models) ? data.models : [];
 		const models = items.map(item => typeof item === 'string' ? item : item?.id || item?.name)
 			.filter(item => typeof item === 'string' && item.trim()).map(item => item.trim())

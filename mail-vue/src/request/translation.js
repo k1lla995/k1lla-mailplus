@@ -13,5 +13,5 @@ export function translationModels(config) {
 }
 
 export function translationTranslate(payload) {
-  return http.post('/translation/translate', payload, { noMsg: true, timeout: 60 * 1000 });
+  return http.post('/translation/translate', payload, { noMsg: true, timeout: 120 * 1000 });
 }

@@ -124,6 +124,10 @@
         <el-form-item :label="$t('translationBaseUrl')">
           <el-input v-model.trim="translationForm.baseUrl" placeholder="https://api.example.com/v1"/>
         </el-form-item>
+        <el-form-item :label="$t('translationApiKey')">
+          <el-input v-model="translationForm.apiKey" type="password" show-password autocomplete="new-password" :placeholder="translationForm.hasApiKey ? $t('translationKeySaved') : ''"/>
+          <div class="translation-key-hint">{{ $t('translationKeyHint') }}</div>
+        </el-form-item>
         <el-form-item :label="$t('translationModel')">
           <div class="translation-model-control">
             <el-select v-model="translationForm.model" filterable allow-create default-first-option>
@@ -133,10 +137,6 @@
               <Icon icon="ion:reload" width="16" height="16"/>
             </el-button>
           </div>
-        </el-form-item>
-        <el-form-item :label="$t('translationApiKey')">
-          <el-input v-model="translationForm.apiKey" type="password" show-password autocomplete="new-password" :placeholder="translationForm.hasApiKey ? $t('translationKeySaved') : ''"/>
-          <div class="translation-key-hint">{{ $t('translationKeyHint') }}</div>
         </el-form-item>
         <el-form-item :label="$t('defaultTargetLanguage')">
           <el-select v-model="translationForm.defaultTargetLanguage" filterable allow-create default-first-option>

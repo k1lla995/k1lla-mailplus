@@ -25,9 +25,28 @@ describe('translation provider model discovery', () => {
 	it('loads and normalizes models from an OpenAI-compatible upstream', async () => {
 		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ data: [{ id: 'z-model' }, { id: 'a-model' }, { id: 'a-model' }] }), { status: 200 }));
 		await expect(translationService.listModels(configContext(null), 1, {
-			provider: 'custom', baseUrl: 'https://example.com/v1', apiKey: 'test-key'
+			provider: 'custom', baseUrl: 'https://example.com/v1', apiKey: 'Bearer test-key'
 		})).resolves.toEqual({ models: ['a-model', 'z-model'] });
 		expect(fetchMock).toHaveBeenCalledWith('https://example.com/v1/models', expect.objectContaining({ method: 'GET', headers: expect.objectContaining({ authorization: 'Bearer test-key' }) }));
+		fetchMock.mockRestore();
+	});
+
+	it('does not send a saved key to a different Base URL', async () => {
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ data: [{ id: 'public-model' }] }), { status: 200 }));
+		const savedRow = { provider: 'openai', base_url: 'https://saved.example/v1', model: 'saved-model', default_target_language: 'Chinese', api_key_cipher: 'encrypted-key' };
+		await expect(translationService.listModels(configContext(savedRow), 1, {
+			provider: 'openai', baseUrl: 'https://new.example/v1'
+		})).resolves.toEqual({ models: ['public-model'] });
+		expect(fetchMock).toHaveBeenCalledWith('https://new.example/v1/models', expect.objectContaining({ headers: { accept: 'application/json' } }));
+		fetchMock.mockRestore();
+	});
+
+	it('explains that a new Base URL needs its own API key when the upstream rejects an anonymous request', async () => {
+		const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: { message: 'Unauthorized' } }), { status: 401 }));
+		const savedRow = { provider: 'openai', base_url: 'https://saved.example/v1', model: 'saved-model', default_target_language: 'Chinese', api_key_cipher: 'encrypted-key' };
+		await expect(translationService.listModels(configContext(savedRow), 1, {
+			provider: 'openai', baseUrl: 'https://new.example/v1'
+		})).rejects.toThrow('Translation provider requires an API key to load models');
 		fetchMock.mockRestore();
 	});
 
