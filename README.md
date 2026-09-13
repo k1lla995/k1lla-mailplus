@@ -96,7 +96,7 @@ k1lla-mailplus/
 
 | 项目 | 说明 |
 | --- | --- |
-| Node.js | **18 或更高**（推荐 20 LTS）。在终端执行 `node -v` 可查看版本。 |
+| Node.js | **22.13 或更高**（当前 pnpm 11、Wrangler 4 和 Vite 7 的最低兼容版本）。在终端执行 `node -v` 可查看版本。 |
 | pnpm | 包管理器。未安装时执行：`npm install -g pnpm` |
 | Cloudflare 账号 | 免费账号即可。登录 [Cloudflare Dashboard](https://dash.cloudflare.com/) |
 | 域名 | **必须**把域名托管到 Cloudflare（Nameserver 指向 Cloudflare），才能收信。 |
@@ -118,7 +118,7 @@ pnpm dev
 
 浏览器打开终端提示的地址（一般是 `http://localhost:5173`）。
 
-> 前端环境变量按模式拆分：本地开发用 `.env.dev`，发布构建用 `.env.release`，远程调试用 `.env.remote`。
+> 前端环境变量按模式拆分：本地开发用 `.env.dev`，发布构建可用 `.env.release` 覆盖默认值，远程调试用 `.env.remote`。
 > 仓库只提供模板 `.env.example`，真实的 `.env.*` 已加入 `.gitignore`，请按需复制后再修改。
 
 ### 本地启动后端（可选）
@@ -321,9 +321,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 # 1）确保已登录 Cloudflare
 wrangler login
 
-# 2）生成前端发布构建所需的环境变量文件
-cp mail-vue/.env.example mail-vue/.env.release
-# 确认其中 VITE_BASE_URL = '/api'、VITE_OUT_DIR = ../mail-worker/dist
+# 2）如需覆盖发布构建默认值，再创建 mail-vue/.env.release（可选）
+# 默认 VITE_BASE_URL = '/api'，产物输出到 ../mail-worker/dist
 
 # 3）进入 Worker 目录并安装依赖
 cd mail-worker
@@ -336,6 +335,11 @@ pnpm deploy
 说明：
 
 - `pnpm deploy` 会执行 `wrangler deploy`，并按配置构建 `mail-vue` 前端到 `mail-worker/dist`。
+- Cloudflare Workers Builds 的 Root directory 请设置为 `mail-worker`；Build command 使用 `pnpm install --frozen-lockfile && pnpm run build`，Deploy command 使用 `pnpm exec wrangler deploy`。Workers Builds 不会自动执行 `wrangler.toml` 的 `[build]` 命令。
+- Cloudflare 构建环境请使用 Node.js `22.13+`（或更新版本），否则 pnpm / Wrangler / Vite 可能在安装阶段报 engine 错误。
+- 如果构建日志显示使用了其他 pnpm 主版本，请在 Cloudflare 的 Build variables 中固定 `PNPM_VERSION=11.13.0`。
+- 如果 Cloudflare 项目是 Pages 而不是 Workers，请改用 Root directory `mail-vue`、Build command `pnpm install --frozen-lockfile && pnpm run build`、Output directory `dist`，并在 Build variables 中设置 `VITE_OUT_DIR=dist`（以及指向已部署 Worker 的 `VITE_BASE_URL`）；Pages 只会部署前端，不会部署本项目的 Worker 后端。
+- 检查 Build variables 中是否残留 `VITE_OUT_DIR=dist` 或指向本机的 `VITE_BASE_URL`；这些变量会覆盖默认值，Workers 部署应删除它们或分别设为 `../mail-worker/dist` 与 `/api`。
 - 部署成功后，Cloudflare 会给出一个 `*.workers.dev` 地址；你也可以在控制台给 Worker 绑定自定义域名。
 - 自定义域名需在 Cloudflare DNS 中可解析到该 Worker（控制台「Workers 自定义域 / 路由」按提示操作即可）。
 

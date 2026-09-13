@@ -101,7 +101,7 @@ Prepare the following before you start:
 
 | Item | Notes |
 | --- | --- |
-| Node.js | **18+** (20 LTS recommended). Check with `node -v`. |
+| Node.js | **22.13+** (required by the current pnpm 11, Wrangler 4, and Vite 7 toolchain). Check with `node -v`. |
 | pnpm | Package manager. Install with `npm install -g pnpm` if needed. |
 | Cloudflare account | A free account is enough. Sign in at the [Cloudflare Dashboard](https://dash.cloudflare.com/). |
 | Domain | The domain **must** be on Cloudflare (nameservers pointed to Cloudflare) to receive mail. |
@@ -123,7 +123,7 @@ pnpm dev
 
 Open the URL printed in the terminal (usually `http://localhost:5173`).
 
-> Frontend env vars are split by mode: `.env.dev` for local development, `.env.release` for release builds, `.env.remote` for remote debugging.
+> Frontend env vars are split by mode: `.env.dev` for local development, optional `.env.release` overrides for release builds, and `.env.remote` for remote debugging.
 > Only the template `.env.example` is committed; real `.env.*` files are gitignored — copy and edit as needed.
 
 ### Optional: run the backend locally
@@ -323,9 +323,8 @@ From a terminal:
 # 1) Log in to Cloudflare
 wrangler login
 
-# 2) Create the env file needed by the release frontend build
-cp mail-vue/.env.example mail-vue/.env.release
-# Make sure VITE_BASE_URL = '/api' and VITE_OUT_DIR = ../mail-worker/dist
+# 2) Optionally create mail-vue/.env.release to override release build values
+# Defaults are VITE_BASE_URL = '/api' and output ../mail-worker/dist
 
 # 3) Install Worker dependencies
 cd mail-worker
@@ -338,6 +337,11 @@ pnpm deploy
 Notes:
 
 - `pnpm deploy` runs `wrangler deploy` and builds `mail-vue` into `mail-worker/dist`.
+- For Cloudflare Workers Builds, set Root directory to `mail-worker`; use `pnpm install --frozen-lockfile && pnpm run build` as the Build command and `pnpm exec wrangler deploy` as the Deploy command. Workers Builds does not automatically run the `[build]` command from `wrangler.toml`.
+- Use Node.js `22.13+` (or newer) in the Cloudflare build environment; older images can fail while installing pnpm, Wrangler, or Vite.
+- If the build image selects a different pnpm major version, pin the Cloudflare Build variable `PNPM_VERSION=11.13.0`.
+- If the Cloudflare project is Pages rather than Workers, use Root directory `mail-vue`, Build command `pnpm install --frozen-lockfile && pnpm run build`, and Output directory `dist`; set the Build variable `VITE_OUT_DIR=dist` (and point `VITE_BASE_URL` to the deployed Worker). Pages deploys only the frontend and does not deploy this Worker backend.
+- Check Build variables for a stale `VITE_OUT_DIR=dist` or a localhost `VITE_BASE_URL`; these override the defaults. For Workers, remove them or set them to `../mail-worker/dist` and `/api` respectively.
 - After success you get a `*.workers.dev` URL; you can also attach a custom domain in the dashboard.
 - Custom domains need DNS on Cloudflare pointing at the Worker (use Workers custom domains / routes as guided by the UI).
 

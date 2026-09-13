@@ -8,6 +8,7 @@ import {VitePWA} from 'vite-plugin-pwa';
 
 export default defineConfig(({mode}) => {
     const env = loadEnv(mode, process.cwd(), 'VITE')
+    const defaultOutDir = mode === 'release' ? '../mail-worker/dist' : 'dist'
     return {
         server: {
             host: true,
@@ -41,7 +42,7 @@ export default defineConfig(({mode}) => {
         },
         build: {
             target: 'es2022',
-            outDir: env.VITE_OUT_DIR || 'dist',
+            outDir: env.VITE_OUT_DIR || defaultOutDir,
             emptyOutDir: true,
             assetsInclude: ['**/*.json']
         }

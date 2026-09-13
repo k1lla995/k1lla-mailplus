@@ -45,4 +45,4 @@ crons = ["0 16 * * *"]	#每天晚上12点执行每日任务,刷新分析缓存
 # RESEND_WEBHOOK_SECRET must be set with `wrangler secret put RESEND_WEBHOOK_SECRET`.
 
 [build]
-command = "pnpm --prefix ../mail-vue install --frozen-lockfile && pnpm --prefix ../mail-vue run build"
+command = "pnpm run build"
