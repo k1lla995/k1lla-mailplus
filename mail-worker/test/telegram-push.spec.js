@@ -1,5 +1,5 @@
-import { env, SELF } from 'cloudflare:test';
-import { describe, expect, it } from 'vitest';
+import { env, fetchMock, SELF } from 'cloudflare:test';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const BASE_URL = 'http://example.com/api';
 const JWT_SECRET = 'b7f29a1d-18e2-4d3b-941f-f6b2c97c02fd';
@@ -17,7 +17,23 @@ async function login(email, password) {
 	});
 }
 
+function mockTelegramSendMessage() {
+	fetchMock.get('https://api.telegram.org')
+		.intercept({ path: /\/bot[^/]+\/sendMessage$/, method: 'POST' })
+		.reply(200, { ok: true, result: { message_id: 1 } });
+}
+
 describe('per-user Telegram push', () => {
+	beforeEach(() => {
+		fetchMock.activate();
+		fetchMock.disableNetConnect();
+		mockTelegramSendMessage();
+	});
+
+	afterEach(() => {
+		fetchMock.assertNoPendingInterceptors();
+	});
+
 	it('requires root authorization, verifies a private binding, and disables push on revocation', async () => {
 		const initialized = await request(`/init/${JWT_SECRET}`);
 		const rootLogin = await login('admin@example.com', initialized.admin.temporaryPassword);
@@ -132,7 +148,6 @@ describe('per-user Telegram push', () => {
 		expect(binding.code).toBe(200);
 		expect(binding.data.botUsername).toBe('mail_push_bot');
 		expect(binding.data.botLink).toBe(`https://t.me/mail_push_bot?start=bind_${binding.data.code}`);
-
 		const webhook = await request('/telegram/webhook', {
 			method: 'POST',
 			headers: {
@@ -174,7 +189,6 @@ describe('per-user Telegram push', () => {
 		const root = await env.db.prepare('SELECT user_id AS userId FROM user WHERE email = ?').bind('admin@example.com').first();
 		const authRow = await env.db.prepare('SELECT authorized FROM user_telegram WHERE user_id = ?').bind(root.userId).first();
 		expect(authRow.authorized).toBe(1);
-
 		const webhook = await request('/telegram/webhook', {
 			method: 'POST',
 			headers: {

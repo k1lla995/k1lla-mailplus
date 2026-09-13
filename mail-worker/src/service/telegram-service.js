@@ -12,6 +12,7 @@ import BizError from '../error/biz-error';
 import { eq } from 'drizzle-orm';
 
 const BIND_CODE_RE = /^\/start(?:@\w+)?(?:\s+bind_?([a-f0-9]{36}))?\s*$/i;
+const TELEGRAM_REQUEST_TIMEOUT_MS = 10_000;
 
 function normalizeTgBotUsername(input) {
 	if (!input || typeof input !== 'string') return '';
@@ -35,7 +36,8 @@ async function telegramApi(token, method, body = {}) {
 	const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(body ?? {})
+		body: JSON.stringify(body ?? {}),
+		signal: AbortSignal.timeout(TELEGRAM_REQUEST_TIMEOUT_MS)
 	});
 	const raw = await response.text();
 	let payload = null;
