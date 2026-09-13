@@ -114,10 +114,17 @@ You can run the UI without a full Cloudflare setup:
 ```bash
 cd mail-vue
 pnpm install
+
+# Create the env file on first run (Vite loads .env.<mode> per --mode)
+cp .env.example .env.dev
+
 pnpm dev
 ```
 
 Open the URL printed in the terminal (usually `http://localhost:5173`).
+
+> Frontend env vars are split by mode: `.env.dev` for local development, `.env.release` for release builds, `.env.remote` for remote debugging.
+> Only the template `.env.example` is committed; real `.env.*` files are gitignored — copy and edit as needed.
 
 ### Optional: run the backend locally
 
@@ -316,11 +323,15 @@ From a terminal:
 # 1) Log in to Cloudflare
 wrangler login
 
-# 2) Install Worker dependencies
+# 2) Create the env file needed by the release frontend build
+cp mail-vue/.env.example mail-vue/.env.release
+# Make sure VITE_BASE_URL = '/api' and VITE_OUT_DIR = ../mail-worker/dist
+
+# 3) Install Worker dependencies
 cd mail-worker
 pnpm install
 
-# 3) Deploy (builds the frontend, then publishes the Worker)
+# 4) Deploy (builds the frontend, then publishes the Worker)
 pnpm deploy
 ```
 

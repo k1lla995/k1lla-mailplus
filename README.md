@@ -109,10 +109,17 @@ k1lla-mailplus/
 ```bash
 cd mail-vue
 pnpm install
+
+# 首次运行需生成环境变量文件（Vite 按 --mode 读取 .env.<mode>）
+cp .env.example .env.dev
+
 pnpm dev
 ```
 
 浏览器打开终端提示的地址（一般是 `http://localhost:5173`）。
+
+> 前端环境变量按模式拆分：本地开发用 `.env.dev`，发布构建用 `.env.release`，远程调试用 `.env.remote`。
+> 仓库只提供模板 `.env.example`，真实的 `.env.*` 已加入 `.gitignore`，请按需复制后再修改。
 
 ### 本地启动后端（可选）
 
@@ -314,11 +321,15 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 # 1）确保已登录 Cloudflare
 wrangler login
 
-# 2）进入 Worker 目录并安装依赖
+# 2）生成前端发布构建所需的环境变量文件
+cp mail-vue/.env.example mail-vue/.env.release
+# 确认其中 VITE_BASE_URL = '/api'、VITE_OUT_DIR = ../mail-worker/dist
+
+# 3）进入 Worker 目录并安装依赖
 cd mail-worker
 pnpm install
 
-# 3）部署（会先构建前端再发布 Worker）
+# 4）部署（会先构建前端再发布 Worker）
 pnpm deploy
 ```
 
